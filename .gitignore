@@ -1,0 +1,12 @@
+add_experiments_flux_schnell/
+data/
+remove_experiments/
+remove_experiments_flux_schnell/
+style_experiments/
+style_experiments_flux_dev_test/
+style_experiments_flux_schnell_test/
+
+get_vector_clean.py
+__pycache__/
+test.ipynb
+plots.ipynb

@@ -1,0 +1,20 @@
+woman, portrait
+man, portrait
+man, portrait, soft focus
+woman looking at the camera
+A white background
+A light gray background
+A dark gray background
+ice bear
+cat
+tree frog
+hippopotamus
+Komodo dragon
+woman,  natural light, portrait
+man,  natural light, portrait
+man looking at the camera 
+man near window, portrait
+man looking at the camera
+A yellow background
+flamingo
+dog

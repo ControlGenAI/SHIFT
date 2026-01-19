@@ -44,7 +44,7 @@ from diffusers.utils.torch_utils import randn_tensor
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from diffusers.pipelines.flux.pipeline_output import FluxPipelineOutput
 
-
+from utils import steering_txt_data, apply_txt_steering
 if is_torch_xla_available():
     import torch_xla.core.xla_model as xm
 
@@ -696,6 +696,7 @@ class FluxPipeline(
         callback_on_step_end: Optional[Callable[[int, int, Dict], None]] = None,
         callback_on_step_end_tensor_inputs: List[str] = ["latents"],
         max_sequence_length: int = 512,
+        txt_steering={'vector': None},
         **args,
     ):
         r"""
@@ -881,7 +882,8 @@ class FluxPipeline(
             latents,
         )
 
-        photo = args['photo']
+        #photo = args['photo']
+        photo = None
         if photo is not None:
             # Encode photo (in [-1, 1]) to latents for diffusion
             photo =  self.image_processor.preprocess(  # Center crop + resize
@@ -961,6 +963,15 @@ class FluxPipeline(
         # Check out more details here: https://github.com/huggingface/diffusers/pull/11696
         # if photo is None:
         #latents = torch.cat([latents]*2)
+        #txt_steering = {'vector': torch.load('/workspace-SR006.nfs2/konovalova/workspace/attention-map-diffusers/steering_vecs_clean/add_experiments_flux_schnell/data_vectors_txt/glasses_txt__prompts_20_diff_embeddings.pt'), 'strength': 1.5}
+        if txt_steering['vector'] is not None:
+            pooled_style, seqs_style = steering_txt_data(txt_steering['vector'], txt_steering['strength'], prompt_embeds, mean=False, ssim=True, pooled=True, normed=False)
+            print(pooled_style.shape, seqs_style.shape)
+        else:
+            assert False
+        
+            pooled_style, seqs_style = 0, 0
+        
         
         self.scheduler.set_begin_index(0)
         with self.progress_bar(total=num_inference_steps) as progress_bar:
@@ -976,40 +987,16 @@ class FluxPipeline(
                     self._joint_attention_kwargs["ip_adapter_image_embeds"] = image_embeds
                 # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
                 timestep = t.expand(latents.shape[0]).to(latents.dtype)
-                #os.makedirs('switch_acts_cyberpunk', exist_ok=True)
-                #torch.save({'pooled': pooled_prompt_embeds, 'embs': prompt_embeds}, f'switch_acts_cyberpunk/{i}_txt.pt')
-                # data = torch.load( f'switch_acts_cyberpunk/{i}_txt.pt')
-                # new_embs = data['embs']
-                # new_pooled_embs  = data['pooled']
-                embeds_style = torch.load('add_experiments_flux_schnell/data_vectors_txt/fox_wold_txt__prompts_20_diff_embeddings.pt')
-                #embeds_style = torch.load('remove_experiments_flux_schnell/data_vectors_txt/spongebob_txt__prompts_20_diff_embeddings.pt')
-                seqs_style = embeds_style['sequence'].to(pooled_prompt_embeds.dtype).to(pooled_prompt_embeds.device).mean(0, keepdim=True) * 2.
-                pooled_style = embeds_style['pooled'].to(pooled_prompt_embeds.dtype).to(pooled_prompt_embeds.device).mean(0, keepdim=True) * 2.
-                #seqs_style = seqs_style * F.cosine_similarity(seqs_style, prompt_embeds, dim=2).unsqueeze(2) * 5
-                #pooled_style = pooled_style * F.cosine_similarity(pooled_style, pooled_prompt_embeds, dim=1) * 5
-                #print(F.cosine_similarity(pooled_style, pooled_prompt_embeds, dim=1) * 5)
-                seqs_style = seqs_style.mean(1, keepdim=True)
-                sim_add = F.cosine_similarity(prompt_embeds.clone() / prompt_embeds.norm(dim=-1, keepdim=True), seqs_style.clone() / seqs_style.norm(dim=-1, keepdim=True), dim=-1)[0]
-                k_ratio = 0.1
-                k_val = int(sim_add.shape[0] * k_ratio)
-                
-                if k_val > 0:
-                    # Find the threshold value for the top K
-                    threshold = torch.topk(sim_add.flatten(), k_val).values[-1]
-                    sim_mask = (sim_add >= threshold).float()
-                else:
-                    # Fallback for very short sequences
-                    sim_mask = (sim_add > 0.1).float()
 
-                
+                new_pooled_embeds, new_prompt_embeds = apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_style, normed=False)
                 
                 with self.transformer.cache_context("cond"):
                     noise_pred = self.transformer(
                         hidden_states=latents,
                         timestep=timestep / 1000,
                         guidance=guidance,
-                        pooled_projections=pooled_prompt_embeds+pooled_style, #+pooled_style, #0.97*pooled_prompt_embeds + new_pooled_embs*1.,
-                        encoder_hidden_states=prompt_embeds+seqs_style*sim_mask.unsqueeze(1).to(seqs_style.dtype), #+seqs_style, #0.97*prompt_embeds + new_embs*1.,
+                        pooled_projections=new_pooled_embeds, #+pooled_style, #0.97*pooled_prompt_embeds + new_pooled_embs*1.,
+                        encoder_hidden_states=new_prompt_embeds, #+seqs_style, #0.97*prompt_embeds + new_embs*1.,
                         txt_ids=text_ids,
                         img_ids=latent_image_ids,
                         joint_attention_kwargs=self.joint_attention_kwargs,

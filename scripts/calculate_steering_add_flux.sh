@@ -36,10 +36,10 @@
 #        --blocks 19 \
 
 python calculate_steering.py \
-       --pos_path "add_experiments_flux_schnell/data_vectors/fox_wold_wolf_gs_0.0_prompts_20_pos_attn_enc.pt" \
-       --neg_path "add_experiments_flux_schnell/data_vectors/fox_wold_wolf_gs_0.0_prompts_20_neg_attn_enc.pt" \
+       --pos_path "add_experiments_flux_schnell/data_vectors/alpaca_horse_horse_gs_0.0_prompts_20_pos_attn_enc.pt" \
+       --neg_path "add_experiments_flux_schnell/data_vectors/alpaca_horse_horse_gs_0.0_prompts_20_neg_attn_enc.pt" \
        --n_samples 20 \
-       --save_dir add_experiments_flux_schnell/final_steering/fox_wolf/base \
+       --save_dir add_experiments_flux_schnell/final_steering/alpaca_horse/base \
        --save_svm \
        --timesteps 4 \
        --blocks 19 \

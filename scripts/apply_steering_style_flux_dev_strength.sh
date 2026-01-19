@@ -18,56 +18,56 @@
 
 
 
-CUDA_VISIBLE_DIVECES=1,0,2,3, python apply_steering_with_injection_flux.py \
-       --structure 1.2 \
-       --strength 300.0 \
-       --n_samples 20 \
-       --data_dir style_experiments_flux_dev_test/final_steering/sketch/base \
-       --t_structure 1500 \
-       --block_structure 0 \
-       --block_steering 'all' \
-       --model_name black-forest-labs/FLUX.1-dev \
-       --inference_steps 20 \
-       --save_svm \
-       --guidance_scale 3.5 \
-       --cls_min 21 \
-       --block_steering 'all' \
-       --results_dir 'style_experiments_flux_dev_test/generated_images/txt_blocks_test_sketch_diff_all/test'
+# CUDA_VISIBLE_DIVECES=1,0,2,3, python apply_steering_with_injection_flux.py \
+#        --structure 1.2 \
+#        --strength 300.0 \
+#        --n_samples 20 \
+#        --data_dir style_experiments_flux_dev_test/final_steering/sketch/base \
+#        --t_structure 1500 \
+#        --block_structure 0 \
+#        --block_steering 'all' \
+#        --model_name black-forest-labs/FLUX.1-dev \
+#        --inference_steps 20 \
+#        --save_svm \
+#        --guidance_scale 3.5 \
+#        --cls_min 21 \
+#        --block_steering 'all' \
+#        --results_dir 'style_experiments_flux_dev_test/generated_images/txt_blocks_test_sketch_diff_all/test'
 
-
-
-CUDA_VISIBLE_DIVECES=1,0,2,3, python apply_steering_with_injection_flux.py \
-       --structure 1.2 \
-       --strength 150.0 \
-       --n_samples 20 \
-       --data_dir style_experiments_flux_dev_test/final_steering/sketch/base \
-       --t_structure 1500 \
-       --block_structure 0 \
-       --block_steering 'all' \
-       --model_name black-forest-labs/FLUX.1-dev \
-       --inference_steps 20 \
-       --save_svm \
-       --guidance_scale 3.5 \
-       --cls_min 21 \
-       --block_steering 'all' \
-       --results_dir 'style_experiments_flux_dev_test/generated_images/txt_blocks_test_sketch_diff_all/test'
 
 
 # CUDA_VISIBLE_DIVECES=1,0,2,3, python apply_steering_with_injection_flux.py \
 #        --structure 1.2 \
-#        --strength 0.0 \
+#        --strength 150.0 \
 #        --n_samples 20 \
-#        --data_dir style_experiments_flux_schnell_test/final_steering/sketch_not_sparse/base \
+#        --data_dir style_experiments_flux_dev_test/final_steering/sketch/base \
 #        --t_structure 1500 \
 #        --block_structure 0 \
 #        --block_steering 'all' \
-#        --model_name black-forest-labs/FLUX.1-schnell \
-#        --inference_steps 4 \
+#        --model_name black-forest-labs/FLUX.1-dev \
+#        --inference_steps 20 \
 #        --save_svm \
-#        --guidance_scale 0.0 \
+#        --guidance_scale 3.5 \
 #        --cls_min 21 \
 #        --block_steering 'all' \
-#        --results_dir 'style_experiments_flux_schnell_test/generated_images/txt_blocks_test_sketch_all/test'
+#        --results_dir 'style_experiments_flux_dev_test/generated_images/txt_blocks_test_sketch_diff_all/test'
+
+
+CUDA_VISIBLE_DIVECES=1,0,2,3, python apply_steering_with_injection.py \
+       --structure 1.2 \
+       --strength 300.0 \
+       --n_samples 20 \
+       --data_dir style_experiments_flux_schnell_test/final_steering/sketch_not_sparse/base \
+       --t_structure 1500 \
+       --block_structure 0 \
+       --block_steering 'all' \
+       --model_name black-forest-labs/FLUX.1-schnell \
+       --inference_steps 4 \
+       --save_svm \
+       --guidance_scale 0.0 \
+       --cls_min 21 \
+       --block_steering 'all' \
+       --results_dir 'style_experiments_flux_schnell_test/generated_images/txt_blocks_test_sketch_all/test_6'
 
 
 

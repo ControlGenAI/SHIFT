@@ -63,11 +63,11 @@ python calculate_steering.py \
        --pos_path "style_experiments_flux_schnell_test/data_vectors/sketch_txt__gs_0.0_prompts_20_pos_attn_enc.pt" \
        --neg_path "style_experiments_flux_schnell_test/data_vectors/sketch_txt__gs_0.0_prompts_20_neg_attn_enc.pt" \
        --n_samples 20 \
-       --save_dir style_experiments_flux_schnell_test/final_steering/sketch_bt/base \
+       --save_dir style_experiments_flux_schnell_test/final_steering/sketch_new_1/base \
        --save_svm \
        --timesteps 4 \
        --blocks 57 \
-       --best_tokens \
+
 
 python calculate_steering.py \
        --pos_path "style_experiments_flux_schnell_test/data_vectors/anime_txt__gs_0.0_prompts_20_pos_attn_enc.pt" \

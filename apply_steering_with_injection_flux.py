@@ -3,806 +3,363 @@ import numpy as np
 import os
 import torch.nn.functional as F
 import argparse
-import math
+import sklearn.svm._classes 
+from typing import Dict, List, Tuple, Union, Optional
 from tqdm import tqdm
-from typing import Dict, Any, Optional, List, Callable, Tuple, Union
-
 from PIL import Image
 import torchvision.transforms as T
-# Assuming these are custom/external modules that should remain
+
+# Standard Pipeline and Utility Imports
 from sd_3 import StableDiffusion3Pipeline 
 from flux import FluxPipeline 
-#from diffusers import StableDiffusion3Pipeline 
 from sd_3_injection import JointAttnProcessor2_Injection 
-import sklearn.svm._classes 
-import torch.nn.functional as F
-from utils import load_steering_data, calculate_cls_score, norm_based_steering_f, orthogonal_projection_steering
-
+from utils import calculate_cls_score, orthogonal_projection_steering
 
 # ==============================================================================
-# ------------------------------ Main Steering Logic ---------------------------
+# 1. Data Loading: Preserving Your Original Logic
 # ==============================================================================
+def load_steering_data(
+    svm_model_path: Optional[str], 
+    scores_path: Optional[str], 
+    token_best_path: Optional[str], 
+    quantile_level: float
+) -> Tuple[Optional[Dict], Optional[torch.Tensor], Optional[torch.Tensor], Optional[np.ndarray]]:
+    """Loads SVM models, best tokens, and scores using original logic."""
+    
+    models = None
+    if svm_model_path and os.path.exists(svm_model_path):
+        with torch.serialization.safe_globals([sklearn.svm._classes.SVC]): 
+            models = torch.load(svm_model_path, weights_only=False) 
 
-def apply_attention_steering(
-    pipe: StableDiffusion3Pipeline,
-    svm_model_path: Optional[str] = None,
-    scores_path: Optional[str] = None,
-    token_best_path: Optional[str] = None,
-    steering_vectors: Dict[int, Dict[str, Union[torch.Tensor, List[torch.Tensor]]]] = None,
-    strength: float = 1.0,
-    block: Union[str, List[int]] = 'all',
-    t_structure: int = 0,
-    t_steering=0,
-    block_structure: int = 30,
-    activations: str = 'attn_enc',
-    task: str = 'add concept',
-    cls_min: float = 3.0,
-    iterative_refinement: bool = False,
-    orthogonal_projection: bool = False,
-    norm_based_steering: bool = False,
-    quantile_type: str = 'block', # 'block', 'timestep', or 'no'
-    quantile_level: float = 0.5,
-    cls_type: str = 'steep',
-    model_type=None,
-) -> Tuple[Callable, Callable]:
-    """
-    Applies attention steering vectors during generation by registering forward hooks.
+    tokens_best = None
+    if token_best_path and os.path.exists(token_best_path):
+        tokens_best = torch.load(token_best_path, weights_only=False)
+     
+    scores_all = None
+    if scores_path and os.path.exists(scores_path):
+        # Handle both tensor and numpy loads safely
+        data = torch.load(scores_path, weights_only=False)
+        scores_all = data if torch.is_tensor(data) else torch.from_numpy(data)
 
-    Returns:
-        A tuple: (step_callback, remove_hooks)
-    """
-    if steering_vectors is None:
-        raise ValueError("Steering vectors must be provided.")
+    quantiles = None
+    if scores_all is not None and scores_path:
+        scores_np = scores_all.numpy()
+        if 'block' in scores_path:
+            quantiles = np.quantile(scores_np, q=quantile_level, axis=2) 
+        elif 'timestep' in scores_path:
+            quantiles = np.quantile(scores_np, q=quantile_level, axis=(1, 2)) 
+        else:
+            quantiles = np.quantile(scores_np, q=quantile_level)
+    
+    return models, tokens_best, scores_all, quantiles
 
+# ==============================================================================
+# 2. Steering Engine: Core Math Operations
+# ==============================================================================
+class SteeringEngine:
+
+    @classmethod
+    def apply_steering(
+        cls, 
+        activations: torch.Tensor, 
+        steering_vec: torch.Tensor, 
+        args, 
+        score_val: torch.Tensor
+    ) -> torch.Tensor:
+        
+        def calculate_sim(act_unit, v_unit, args):
+            sim = F.cosine_similarity(act_unit, v_unit, dim=-1)
+            k_val = max(1, int(sim.shape[0] * args.top_k_percent))
+            threshold = torch.topk(sim.flatten(), k_val).values[-1]
+            mask = (sim >= threshold).float().unsqueeze(-1)
+            
+            # Use similarity weight only for removal tasks
+            weight = sim.unsqueeze(-1)
+            return mask, weight
+        
+        dtype = activations.dtype
+        act_f32 = activations.float()
+        orig_norm = torch.norm(act_f32, dim=-1, keepdim=True) + 1e-6
+        act_unit = act_f32 / orig_norm
+        
+        v_unit = steering_vec.float() / (torch.norm(steering_vec.float(), dim=-1, keepdim=True) + 1e-6)
+        
+        # 1. Orthogonal Projection
+        v_steer = orthogonal_projection_steering(v_unit, act_unit) if args.orthogonal_projection else v_unit
+
+        # 2. SSIM Masking (Now active for BOTH Add and Remove)
+        if args.use_ssim_mask:
+            if args.vector_type == 'diff' or args.steering_type == 'mean':
+                mask, weight = calculate_sim(act_unit, v_unit, args)
+            else:
+                masks = []
+                weights = []
+                for i, v in enumerate(v_unit):
+                    mask, weight = calculate_sim(act_unit, v_unit[i], args)
+                    masks.append(mask)
+                    weights.append(weight)
+                
+                mask = torch.stack(masks)
+                weight = torch.stack(weights)
+                
+
+        else:
+            mask, weight = 1.0, 1.0
+
+        # 3. Task Logic
+        if args.task == 'remove':
+            if args.vector_type == 'diff' or args.steering_type == 'mean':
+                adjustment = args.strength * weight * v_steer.to(activations.dtype) * mask * score_val
+            else:
+                score_val = score_val.unsqueeze(1)
+                adjustment = args.strength * weight * v_steer.to(activations.dtype) * mask * score_val
+                adjustment = adjustment.mean(0)
+            steered = activations - (adjustment)
+            print(score_val)
+        else:
+            # Masked addition targets concept-relevant tokens
+            if args.vector_type == 'diff' or args.steering_type == 'mean':
+                adjustment = args.strength * v_steer.to(activations.dtype) * mask * score_val  
+            else:
+                score_val = score_val.unsqueeze(1)
+                adjustment = args.strength * v_steer.to(activations.dtype).unsqueeze(1) * mask * score_val.unsqueeze(1)
+                adjustment = adjustment.mean(0)
+            steered = activations + (adjustment)
+
+        # 4. Energy Restoration
+        steered_unit = steered.float() / (torch.norm(steered.float(), dim=-1, keepdim=True) + 1e-6)
+        return (steered_unit * orig_norm).to(dtype)
+
+# ==============================================================================
+# 3. Hook and Injection Logic
+# ==============================================================================
+MODEL_CONFIGS = {
+    "flux": {"last_layer": 56, "out_idx": 1, "inner_idx": 0, "dtype": torch.bfloat16},
+    "sd3": {"last_layer": 23, "out_idx": 1, "inner_idx": 1, "dtype": torch.float16}
+}
+
+def apply_attention_steering(pipe, args, vector):
+    m_key = "flux" if "flux" in args.model_name.lower() else "sd3"
+    cfg = MODEL_CONFIGS[m_key]
+    state = {"step": 0}
     hook_handles = []
-    current_step = 0
-    
-    # 1. Load Data
+
+    # Map your paths from argparse
+    svm_path = os.path.join(args.data_dir, f"base_0.85_20_svm_models.pt")
+    scr_path = os.path.join(args.data_dir, f"base_0.85_20_scores.pt")
+    tok_path = os.path.join(args.data_dir, f"base_0.85_20_tokens.pt")
+
     models, tokens_best, scores_all, quantiles = load_steering_data(
-        svm_model_path, scores_path, token_best_path, quantile_level
+        svm_path, scr_path, tok_path, args.quantile_level
     )
-    
-    if quantile_type == 'no':
-        scores_all = None
-    if isinstance(block, str) and block.lower() == 'all':
-        steering_blocks = 'all'
-    elif isinstance(block, list):
-        steering_blocks = set(block)
-    else:
-        # Assume block is an int list or compatible format
-        steering_blocks = set(block)
-        
 
-    def step_callback(step_idx: int, timestep: int, latents: torch.Tensor, **kwargs):
-        """Callback executed before each main step of the diffusion process."""
-        nonlocal current_step
-        current_step = step_idx
-        
-    def steering_hook(layer_idx: int) -> Callable:
-        """Creates the forward hook function for a specific layer."""
-        def hook(module, input: Tuple[torch.Tensor], output: Tuple[torch.Tensor]) -> Tuple[torch.Tensor, ...]:
-            nonlocal current_step
-            device = output[0].device
-            dtype = output[0].dtype
-           
-            if current_step not in steering_vectors or f"layer_{layer_idx}" not in steering_vectors[current_step]:
-                if 'flux' in model_type.lower():
-                    layers_idx_tg = 56
-                else: 
-                    layers_idx_tg = 23
-                
-                if layer_idx == layers_idx_tg:
-                    current_step += 1
-                return output
-            
-            # Check if layer is in the specified steering blocks
-            is_in_block = (steering_blocks == 'all' or layer_idx in steering_blocks)
+    def steering_hook(layer_idx: int):
+        def hook(module, input, output):
+            step = state["step"]
+            if layer_idx == cfg["last_layer"]: state["step"] += 1
 
-            if not is_in_block:
-                if 'flux' in model_type.lower():
-                    layers_idx_tg = 56
-                else: 
-                    layers_idx_tg = 23
-                
-                if layer_idx == layers_idx_tg:
-                    current_step += 1
-                return output
-            
-            is_in_t = (t_steering == 'all' or current_step in t_steering)
+            # block_steering: Union[str, List[int]]
+            # if args.block_steering == '':
+            #     block_steering = []
+            # else:
+            #     if args.block_steering.lower() != 'all':
+            #         try:
+            #             block_steering = [int(x.strip()) for x in args.block_steering.split(',')]
+            #         except ValueError:
+            #             print("Warning: Invalid format for --block_steering. Using 'all'.")
+            #             block_steering = 'all'
+            #     else:
+            #         block_steering = 'all'
 
-            if not is_in_t:
-                return output
+            # t_steering: Union[str, List[int]]
+            # if args.t_steering == '':
+            #     t_steering = []
+            # else:
+            #     if args.t_steering.lower() != 'all':
+            #         try:
+            #             t_steering = [int(x.strip()) for x in args.t_steering.split(',')]
+            #         except ValueError:
+            #             print("Warning: Invalid format for --block_steering. Using 'all'.")
+            #             t_steering = 'all'
+            #     else:
+            #         t_steering = 'all'
 
-            # Load steering data for the current step and layer
-           
-            print(current_step, layer_idx)
+
+            if step not in vector or f"layer_{layer_idx}" not in vector[step]: return output
+            if args.block_steering != 'all' and layer_idx not in args.block_steering: return output
+            if args.t_steering != 'all' and step not in args.t_steering: return output
+            print(layer_idx, step)
+            if len(output) != 2: return output
+
+
+            act_tuple = list(output)
+            hidden_states = act_tuple[cfg["out_idx"]]
+            to_modify = hidden_states[cfg["inner_idx"]].clone()
+
+            # Dynamic Classifier Scoring & Fallback
+            score_val = torch.ones((1, 1), device=to_modify.device, dtype=to_modify.dtype)
             
-            vec_data = steering_vectors[current_step][f"layer_{layer_idx}"].mean(0, keepdim=True)
-            layer_models = models[current_step][f"layer_{layer_idx}"] if models is not None else None
-            
-            # Handle single vs. multiple SVM models (if layer_models is a list/tuple)
-            if not isinstance(layer_models, list) and not isinstance(layer_models, tuple):
-                layer_models = [layer_models] if layer_models is not None else []
-            
-            if len(output) == 2:
-                output_idx = 1 if activations == 'attn_enc' else 0 
-                activations_tuple = output
-                double_block = True
-                if 'flux' in model_type.lower():
-                    activations_to_modify = output[output_idx][0].clone()
-                else:
-                    activations_to_modify = output[output_idx][1].clone() # Shape [L, D] (for tokens)
+            # 1. Determine signal strength for the current state (step/layer)
+            # Assuming scores_all is a tensor of shape [steps, layers, tokens]
+            current_signal = 1.0 # Default
+            if scores_all is not None:
+                layer_scores = scores_all[:, step, layer_idx]
+                current_signal = layer_scores.float()
+
+            # 2. Logic: If signal is low, skip cls and use score=1
+            if args.use_cls and models:
+                ensemble = models.get(step, {}).get(f"layer_{layer_idx}")
+                if ensemble:
+                    mean_act = (to_modify).mean(0, keepdim=True)  
+                    mean_act = mean_act / (mean_act.norm(dim=-1, keepdim=True) + 1e-6)
+                    votes = [
+                        calculate_cls_score(mean_act.cpu().float(), args.cls_min, m, args.cls_type, task=args.task, use_distance=False)[0] 
+                        if current_signal[i] > args.min_signal_threshold else 1.0 
+                        for i, m in enumerate(ensemble)
+                    ]
+                    score_val = torch.tensor(votes).to(to_modify.device, to_modify.dtype)
+                    if args.vector_type == 'diff' or args.steering_type == 'mean':
+                        score_val = torch.mean(score_val, dim=0, keepdim=True)
             else:
-                #return output
-                assert False
-                if True:
-                    if 'flux' in model_type.lower():
-                        layers_idx_tg = 56
-                    else: 
-                        layers_idx_tg = 23
-                    print(layer_idx, layers_idx_tg)
-                    if layer_idx == layers_idx_tg:
-                        print('hhehehe')
-                        current_step += 1
-                    return output
-                else:
-                    double_block = False
-                    activations_to_modify = output[0, :512, :].clone()
+                score_val = torch.ones((1, 1), device=to_modify.device, dtype=to_modify.dtype)
 
-            original_norm = torch.norm(activations_to_modify.float(), dim=-1, keepdim=True) + 1e-6
-            normalized_activations = activations_to_modify.clone().float() / original_norm # Clone to modify in place
-
-            # Check if there are best tokens or if we steer all tokens
-            token_indices = tokens_best[current_step][layer_idx] if tokens_best is not None else None
-            steer_all_tokens = token_indices is None or len(token_indices) == 0
-
-            # Convert steering vector to correct device/dtype
-            if isinstance(vec_data, list):
-                # Handle list of vectors (e.g., from an ensemble or multi-part steering)
-                steering_tensor = torch.stack(vec_data, dim=0).to(device=device, dtype=dtype) # [N, D]
+            # Apply Vector Math
+            if args.steering_type == 'mean':
+                steering_vec = vector[step][f"layer_{layer_idx}"].mean(0, keepdim=True).to(to_modify.device)
             else:
-                steering_tensor = vec_data.to(device=device, dtype=dtype).squeeze(0) # [D] or [L, D]
+                steering_vec = vector[step][f"layer_{layer_idx}"].to(to_modify.device, to_modify.dtype)
+            final_act = SteeringEngine.apply_steering(to_modify, steering_vec, args, score_val)
 
-            if activations == 'attn_enc' or activations == 'attn_im':
-                if task == 'remove':
-                    v_norm = torch.norm(steering_tensor.float(), dim=-1, keepdim=True)
-                    steering_tensor = steering_tensor / (v_norm + 1e-6)
-
-                    #sim = (normalized_activations * steering_tensor[0]).sum(dim=1, keepdim=True)
-                    #sim = (normalized_activations * steering_tensor).sum(dim=1, keepdim=True)
-                    # F.cosine_similarity(seqs_style, prompt_embeds, dim=1)
-    
-                    # sim = F.relu(sim)  # Shape (N, 1)
-                    sim = F.cosine_similarity(normalized_activations, steering_tensor, dim=1)
-                    #sim = F.relu(sim)
-
-                    k_ratio = 0.01 # Top 25% of most correspondent tokens
-                    k_val = int(sim.shape[0] * k_ratio)
-                    
-                    # We combine ReLU (only positive sim) with a Top-K mask
-                    threshold = torch.topk(sim.flatten(), k_val).values[-1]
-                    # sim_mask is 1.0 for the highest similarity tokens, 0.0 otherwise
-                    sim_mask = (sim >= threshold).float() * (sim > 0).float()
-                    score_value = torch.tensor([1.0]).unsqueeze(1).to(device, dtype).repeat(steering_tensor.shape[0], 1)
-                    
-                    score_mask = 1.0  
-                    if layer_models:
-                        if steer_all_tokens:
-                            a = normalized_activations.mean(0)[None].cpu().clone() 
-                            a = a / a.norm(dim=-1)
-                        else:
-                            a = normalized_activations[token_indices].mean(0)[None].cpu().clone() 
-                        
-                        
-                        scoreeee_all = []
-                        distance_all = []
-                        score_cls_all = []
-                        # Iterate through all SVM models for this layer/step (if it's an ensemble)
-                        for model_instance in layer_models:
-                            scoreeee, score_cls, distance = calculate_cls_score(a, cls_min, model=model_instance, cls_type=cls_type, use_distance=False, task=task)
-                            scoreeee_all.append(scoreeee)
-                            distance_all.append(distance)
-                            score_cls_all.append(score_cls) 
-                        
-
-                        #score_value = torch.mean(torch.tensor(scoreeee_list)).to(device, dtype)
-                        if 'flux' in model_type.lower():
-                            score_value = torch.tensor(scoreeee_all).unsqueeze(1).to(device, dtype)
-                            score_value = torch.ones_like(score_value)
-                        else:
-                            score_value = torch.tensor(scoreeee_all).unsqueeze(1).to(device, dtype)
-                            #score_value = torch.ones_like(score_value)
-                            #print(layer_idx, current_step, score_value, scoreeee, score_cls, cls_min, distance_all) 
-                            #print(layer_idx)
-                        
-                    #subtraction_term = strength * sim * (steering_tensor * score_value)[0]
-                    print(strength * score_value.mean(0) )
-                    subtraction_term = strength * sim.unsqueeze(1)  * (steering_tensor.unsqueeze(0) * score_value.mean(0)) * sim_mask.unsqueeze(1)
-                    # subtraction_term = strength * sim.unsqueeze(1)  * (steering_tensor * score_value.mean(0)) 
-                    # 5. Perform the subtraction
-                    steered_normalized_output = activations_to_modify - subtraction_term
-
-                    vector_direction = steered_normalized_output.float()
-                    vector_direction = vector_direction / (torch.norm(vector_direction, dim=-1, keepdim=True) + 1e-6)
-                    print(current_step,score_value, score_cls_all, layer_idx, calculate_cls_score(vector_direction.cpu().float().mean(0, keepdim=True), cls_min, model=layer_models[0], cls_type=cls_type, use_distance=False, task='remove'))
-                    # Step B: Multiply by the original norm to restore magnitude
-                    vector_restored_norm = vector_direction * original_norm.float()
-                    
-                    # Step C: Assemble the final output tuple
-                    new_output_embeddings = vector_restored_norm.to(dtype)
-                    
-
-                    if double_block:
-                        if 'flux' in model_type.lower():
-                            activations_tuple[output_idx][0] = new_output_embeddings
-                        else:
-                            activations_tuple[output_idx][1] = new_output_embeddings
-
-                        new_output = (
-                            activations_tuple[0], # Keep QKV output untouched
-                            activations_tuple[1], # Use the norm-restored embeddings
-                        )
-                    else:
-                        output[0, :512] = new_output_embeddings
-                        new_output = output
-                    
-                    if 'flux' in model_type.lower():
-                        layers_idx_tg = 56
-                    else: 
-                        layers_idx_tg = 23
-                    
-                    if layer_idx == layers_idx_tg:
-                        current_step += 1
-                    
-                    return new_output
-
-                ################################################
-                if task == 'add concept':
-                    v_norm = torch.norm(steering_tensor.float(), dim=-1, keepdim=True)
-                    steering_tensor = steering_tensor / (v_norm + 1e-6)
-
-                # 1. Calculate Score (based on SVM distance or fallback)
-                score_value = torch.tensor([1.0]).unsqueeze(1).to(device, dtype).repeat(steering_tensor.shape[0], 1)
-                score_mask = 1.0  
-                if layer_models:
-                    if steer_all_tokens:
-                        a = normalized_activations.mean(0)[None].cpu().clone() 
-                        a = a / a.norm(dim=-1)
-                    else:
-                        a = normalized_activations[token_indices].mean(0)[None].cpu().clone() 
-                    
-                    
-                    scoreeee_all = []
-                    distance_all = []
-                    score_cls_all = []
-                    # Iterate through all SVM models for this layer/step (if it's an ensemble)
-                    for model_instance in layer_models:
-                        scoreeee, score_cls, distance = calculate_cls_score(a, cls_min, model=model_instance, cls_type=cls_type, use_distance=False)
-                        scoreeee_all.append(scoreeee)
-                        distance_all.append(distance)
-                        score_cls_all.append(score_cls) 
-                    
-
-                    #score_value = torch.mean(torch.tensor(scoreeee_list)).to(device, dtype)
-                    if 'flux' in model_type.lower():
-                        score_value = torch.tensor(scoreeee_all).unsqueeze(1).to(device, dtype)
-                        #score_value = torch.ones_like(score_value)
-                    else:
-                        score_value = torch.tensor(scoreeee_all).unsqueeze(1).to(device, dtype)
-                        #score_value = torch.ones_like(score_value)
-                        #print(layer_idx, current_step, score_value, scoreeee, score_cls, cls_min, distance_all) 
-                        #print(layer_idx)
-
-                # 2. Apply Quantile Mask (for best blocks/tokens)
-                if scores_all is not None:
-                    # Determine the quantile threshold for the current step/layer
-                    q = quantiles
-                    if quantile_type == 'block':
-                        q = quantiles[layer_idx]
-                    elif quantile_type == 'timestep':
-                        q = quantiles[current_step]
-                   
-                    score_mask = (scores_all[current_step][layer_idx] >= q).float().to(device)
-
-
-                # 3. Calculate Scaling and Steering Vector
-                adjustment_scale = strength * score_value * score_mask # Base scaling factor
-                if not double_block:
-                    adjustment_scale /= 2
-
-                
-                if norm_based_steering:
-                    # Scale based on inverse token norm
-                    norm_based_scaling = norm_based_steering_f(activations_to_modify.clone()).to(dtype)
-                    adjustment_scale *= norm_based_scaling # [L, 1] tensor
-
-                steering_to_add = steering_tensor.to(dtype)
-                
-                if orthogonal_projection:
-                    # Calculate projection orthogonal to the current normalized output
-                    steering_to_add = orthogonal_projection_steering(activations_to_modify.clone(), steering_tensor, normalize=True).to(dtype)
-
-
-                if iterative_refinement:
-                
-                    max_iter = 10
-                    dist_threshold_pullback = 3.0
-                    dist_threshold_push = 2.0
-                    damping_factor_init = 0.3
-                    
-                    # Start by applying the initial step, scaled by the total adjustment
-                    # We apply the initial large step to the normalized tensor
-                    steered_normalized_output = normalized_activations + steering_to_add * adjustment_scale
-                    
-                    temp_normalized_activations = steered_normalized_output.clone()
-                    
-                    for iter_idx in tqdm(range(max_iter), desc=f"Refine Step {current_step}/{layer_idx}"):
-                        
-                        # Recalculate mean activation for SVM check, using the norm-restored version
-                        # Must restore norm temporarily to get a meaningful mean activation for the SVM model,
-                        # which was trained on full activations or normalized ones, but checking against *current* state.
-                        temp_full_activations = temp_normalized_activations * original_norm
-                        a_iter = temp_full_activations.mean(0)[None].cpu().clone()
-                        a_iter = a_iter / (a_iter.norm(dim=-1) + 1e-6) # Normalize mean direction
-                        
-                        if not layer_models: break
-                        model_instance = layer_models[0]
-                        
-                        # Calculate SVM feedback
-                        # NOTE: Assuming pred_class 1 is the target concept.
-                        pred_class = model_instance.predict(a_iter)[0] 
-                        distance = model_instance.decision_function(a_iter)[0]
-                        
-                        current_damping = damping_factor_init * (0.5 ** iter_idx) 
-                        
-                        # Define the *unit direction* to push/pull by, applying orthogonal rule if requested
-                        if orthogonal_projection:
-                            # Ensure current_steering is orthogonal to the *current* state a_iter
-                            current_steering = orthogonal_projection_steering(
-                                a_iter.to(device), steering_tensor, True
-                            ).to(dtype)
-                        else:
-                            current_steering = steering_tensor # Already normalized as steering_to_add base
-
-                        if pred_class != 1 or np.abs(distance) < dist_threshold_push:
-                            # Wrong class or near boundary: push towards steering direction
-                            temp_normalized_activations += current_steering * strength * current_damping
-                        elif distance > dist_threshold_pullback:
-                            # Correct class, but too far: pull back (opposite of steering direction)
-                            temp_normalized_activations -= current_steering * strength * current_damping
-                        else:
-                            break # Converged
-                            
-                    # After refinement, update the normalized output base
-                    steered_normalized_output = temp_normalized_activations
-
-                elif steer_all_tokens:
-                    # Simple application for all tokens (applies to normalized tensor)
-                    if 'flux' in args.model_name.lower():
-                        alpha = 1.
-                    else:
-                        alpha = 1
-                    if len(steering_to_add.shape) == 3:
-                        adjustment_scale = adjustment_scale[:, None]
-                    
-                    add_sim = True
-                    if add_sim:
-                        #assert False
-                        sim_add = F.cosine_similarity(normalized_activations, steering_to_add, dim=1).unsqueeze(1)
-                        k_ratio = 0.1
-                        k_val = int(sim_add.shape[0] * k_ratio)
-                        
-                        if k_val > 0:
-                            # Find the threshold value for the top K
-                            threshold = torch.topk(sim_add.flatten(), k_val).values[-1]
-                            sim_mask = (sim_add >= threshold).float()
-                        else:
-                            # Fallback for very short sequences
-                            sim_mask = (sim_add > 0.1).float()
-
-                        steered_normalized_output = alpha * activations_to_modify + (steering_to_add * adjustment_scale[0]) * sim_mask
-
-
-                    #steered_normalized_output = alpha * activations_to_modify + (steering_to_add * adjustment_scale).mean(0)
-                    else:
-                        
-                        steered_normalized_output = alpha * activations_to_modify + (steering_to_add * adjustment_scale[0])
-
-                elif token_indices is not None:
-                    # Apply only to selected tokens (applies to normalized tensor)
-                    steered_normalized_output = normalized_activations # Start with the original normalized
-                    
-                    selected_normalized = steered_normalized_output[token_indices]
-                    
-                    if adjustment_scale.ndim > 1:
-                        scaled_steering = steering_to_add[token_indices] * adjustment_scale[token_indices]
-                    else:
-                        scaled_steering = steering_to_add[token_indices] * adjustment_scale
-                        
-                    steered_normalized_output[token_indices] = activations_to_modify + scaled_steering
-                
-            # --- 5. Restore Original Norm (Final Normalization Logic) ---
-            
-            # Step A: Renormalize the *steered* vector to ensure unit length direction
-            vector_direction = steered_normalized_output.float()
-            vector_direction = vector_direction / (torch.norm(vector_direction, dim=-1, keepdim=True) + 1e-6)
-            print(current_step, layer_idx, calculate_cls_score(vector_direction.cpu().float().mean(0, keepdim=True), cls_min, model=layer_models[0], cls_type=cls_type, use_distance=False))
-            # Step B: Multiply by the original norm to restore magnitude
-            vector_restored_norm = vector_direction * original_norm.float()
-            #torch.save(vector_restored_norm, f'activations_test_mix/output_act_{current_step}_{layer_idx}.pt')
-            print(score_value, vector_direction.norm(dim=-1).mean(), vector_restored_norm.min(), vector_restored_norm.max(), vector_restored_norm.mean())
-            # Step C: Assemble the final output tuple
-            new_output_embeddings = vector_restored_norm.to(dtype)
-            
-
-            if double_block:
-                if 'flux' in model_type.lower():
-                    activations_tuple[output_idx][0] = new_output_embeddings
-                else:
-                    activations_tuple[output_idx][1] = new_output_embeddings
-
-                new_output = (
-                    activations_tuple[0], # Keep QKV output untouched
-                    activations_tuple[1], # Use the norm-restored embeddings
-                )
-            else:
-                output[0, :512] = new_output_embeddings
-                new_output = output
-            
-            if 'flux' in model_type.lower():
-                layers_idx_tg = 56
-            else: 
-                layers_idx_tg = 23
-            
-            if layer_idx == layers_idx_tg:
-                current_step += 1
-            
-            return new_output
+            act_tuple[cfg["out_idx"]][cfg["inner_idx"]] = final_act
+            return tuple(act_tuple)
         return hook
 
-    # 2. Register Hooks and Processors
+    # Hook Registration
     
-    # Register hooks on attention layers (attn and attn2 blocks)
-    layer_counter = 0
-    modules_to_hook = []
-
-    # Get both self-attention ('attn') and cross-attention ('attn2') modules
+    layer_id = 0
     for name, module in pipe.transformer.named_modules():
         if name.endswith("attn"):
-            modules_to_hook.append(module)
-        
+            hook_handles.append(module.register_forward_hook(steering_hook(layer_id)))
+            # if m_key == "sd3" and hasattr(module, "processor"):
+            #     module.processor = JointAttnProcessor2_Injection(
+            #         layer_idx=layer_id, 
+            #         do_structure_control=(layer_id <= args.block_structure),
+            #         t_threshold=args.t_structure
+            #     )
+            layer_id += 1
             
-    for module in modules_to_hook:
-        # Register steering hook
-        hook_handles.append(module.register_forward_hook(steering_hook(layer_counter)))
-        
-        # Configure the JointAttnProcessor2_Injection
-        if 'flux' not in model_type.lower():
-            if hasattr(module, "processor"):
-                is_structure_block = layer_counter <= block_structure
-                module.processor = JointAttnProcessor2_Injection(
-                    do_structure_control=is_structure_block,
-                    do_appearance_control=is_structure_block,
-                    layer_idx=layer_counter,
-                    block=layer_counter,
-                    structure_target=['key', 'query'],
-                    t_threshold=t_structure,
-                )
-            
-        layer_counter += 1
-
-
-        if 'flux' not in model_type.lower():
-            layer_counter_2 = 0
-            modules_to_hook_2 = []
-
-            # Get both self-attention ('attn') and cross-attention ('attn2') modules
-            for name, module in pipe.transformer.named_modules():
-                if name.endswith("attn2"):
-                    modules_to_hook_2.append(module)
-                
-                    
-            for module in modules_to_hook_2:
-                # Register steering hook
-                
-                # Configure the JointAttnProcessor2_Injection
-                if hasattr(module, "processor"):
-                    is_structure_block = layer_counter <= block_structure
-                    module.processor = JointAttnProcessor2_Injection(
-                        do_structure_control=is_structure_block,
-                        do_appearance_control=is_structure_block,
-                        layer_idx=layer_counter,
-                        block=layer_counter,
-                        structure_target=['key', 'query'],
-                        t_threshold=t_structure,
-                    )
-                
-                layer_counter_2 += 1
-
-    def remove_hooks():
-        """Function to clean up all registered hooks."""
-        for h in hook_handles:
-            try:
-                h.remove()
-            except Exception:
-                pass
-    
-    return step_callback, remove_hooks
-
+    return state, lambda: [h.remove() for h in hook_handles]
 
 # ==============================================================================
-# ------------------------------ Execution Block -------------------------------
+# 4. Main Loop
 # ==============================================================================
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Apply attention steering with injection.")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model_name', type=str, default="black-forest-labs/FLUX.1-schnell")
+    parser.add_argument('--data_dir', type=str, required=True)
+    parser.add_argument('--prompts_path', type=str, default='data/captions.txt')
+    parser.add_argument('--vector_type', type=str, default='diff')
+    parser.add_argument('--num_prompts', type=int, default=500)
+    parser.add_argument('--task', type=str, default='add concept', choices=['add concept', 'remove'])
+    parser.add_argument('--remove_prompt', type=str, default='cyberpunk style')
     
-    # --- Model and Generation Args ---
-    parser.add_argument('--model_name', type=str, default="stabilityai/stable-diffusion-3.5-medium", help='Stable Diffusion model name or path')
-    parser.add_argument('--prompt', type=str, default="a nice blue eyed woman with black hair", help='Prompt for generation')
-    parser.add_argument('--seed', type=int, default=42, help='Random seed')
-    parser.add_argument('--inference_steps', type=int, default=20, help='Number of inference steps')
-    parser.add_argument('--guidance_scale', type=float, default=4.5, help='Guidance scale')
-    parser.add_argument('--results_dir', type=str, default='results_block/gothic_2', help='Directory to save results')
-    parser.add_argument('--task', type=str, default='add concept', help='')
+    # Steering Config
+    parser.add_argument('--strength', type=float, default=20.0)
+    parser.add_argument('--steering_type', type=str, default='mean')
+    parser.add_argument('--use_ssim_mask', action='store_true', help="Use token similarity masking for both tasks")
+    parser.add_argument('--top_k_percent', type=float, default=0.01)
+    parser.add_argument('--orthogonal_projection', action='store_true')
+    parser.add_argument('--use_cls', action='store_true')
+    parser.add_argument('--min_signal_threshold', type=float, default=0.5)
+    
+    # Steering Hyperparams
+    parser.add_argument('--block_steering', type=str, default='all')
+    parser.add_argument('--t_steering', type=str, default='all')
+    parser.add_argument('--quantile_level', type=float, default=0.5)
+    parser.add_argument('--quantile_type', type=str, default='0.85')
 
-    # --- Steering Data Args ---
-    parser.add_argument('--data_dir', type=str, default='steering_vectors/style/anime', help='Path to data')
-    parser.add_argument('--threshold', type=float, default=0.85, help='Threshold for SVM (used in data filenames)')
-    parser.add_argument('--n_samples', type=int, default=25, help='Number of samples per class (used in data filenames)')
-    
-    # --- Steering Control Args ---
-    parser.add_argument('--strength', type=float, default=25, help='Steering strength (alpha)')
-    parser.add_argument('--block_steering', type=str, default='all', help='Block index or range for steering ("all" or comma-separated list like "0,1,2")')
-    parser.add_argument('--t_steering', default='all', help='T threshold for steering')
-    parser.add_argument('--orthogonal_projection', action='store_true', help='Use orthogonal projection for steering.')
-    parser.add_argument('--iterative_refinement', action='store_true', help='Use iterative refinement with SVM feedback.')
-    parser.add_argument('--cls_min', type=float, default=20.0, help='Max penalty score from SVM.')
-    
-    # --- Token/Quantile Args ---
-    parser.add_argument('--best_tokens', action='store_true', help='Use per-token SVM for token selection.')
-    parser.add_argument('--best_blocks', action='store_true', help='Use per-block scores and quantiles for masking.')
-    parser.add_argument('--quantile_type', type=str, default='no', choices=['no', 'block', 'timestep'], help='Type of quantile masking.')
-    parser.add_argument('--quantile_level', type=float, default=0.5, help='Quantile level for masking.')
-
-    # --- Structure Control Args (for JointAttnProcessor2_Injection) ---
-    parser.add_argument('--structure', type=float, default=0.5, help='Structure strength (unused in current code, but passed to pipe)')
-    parser.add_argument('--block_structure', type=int, default=15, help='Max block index for structure control.')
-    parser.add_argument('--t_structure', type=int, default=0, help='T threshold for structure control.')
-    
-    # --- Data Path Flags (for loading) ---
-    parser.add_argument('--separate_normals', action='store_true', help='Separate normals file used.')
-    parser.add_argument('--save_svm', action='store_true', help='SVM models file should be loaded.')
-    parser.add_argument('--mask_path', type=str, default=None, help='Path to mask file (unused in provided code)')
-    parser.add_argument('--photo_path', type=str, default=None, help='Path to real photo for unconditioning/structure')
-    parser.add_argument('--prompts_path', type=str, default='data/coco_captions_2017/coco_val2017_subset_250_seed42.txt', help='Path to prompts')
-    parser.add_argument('--num_prompts', type=int, default=500, help='number of prompts')
-
-    parser.add_argument('--cls_type', type=str, default='tanh', choices=['steep', 'tanh'], help='Type of SVM penalty function to use (steep or tanh).')
+    # Generation Settings
+    parser.add_argument('--steer_txt', action='store_true')
+    parser.add_argument('--strength_txt', type=float, default=2.0)
+    parser.add_argument('--inference_steps', type=int, default=4)
+    parser.add_argument('--guidance_scale', type=float, default=0.0)
+    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--results_dir', type=str, default='results_steered')
+    parser.add_argument('--structure', type=float, default=0.5)
+    parser.add_argument('--block_structure', type=int, default=15)
+    parser.add_argument('--t_structure', type=int, default=0)
+    parser.add_argument('--cls_min', type=float, default=21.0)
+    parser.add_argument('--cls_type', type=str, default='tanh')
 
     args = parser.parse_args()
 
-    # Load pipeline
-    if 'flux' in args.model_name.lower():
-        pipe = FluxPipeline.from_pretrained(
-            args.model_name,
-            torch_dtype=torch.bfloat16, # bfloat16 is often recommended for Flux
-            device_map="balanced",
-            use_safetensors=True
-        )
-    else:
-        pipe = StableDiffusion3Pipeline.from_pretrained(
-            args.model_name,
-            torch_dtype=torch.float16,
-            device_map="balanced"
-        )
+    # Parse Filters
+    if args.block_steering != 'all': args.block_steering = [int(x) for x in args.block_steering.split(',')]
+    if args.t_steering != 'all': args.t_steering = [int(x) for x in args.t_steering.split(',')]
 
-    # --- 1. Determine File Paths for Steering Data ---
-    p = 'base'
-    if args.best_tokens: p += '_best_tokens'
+    # Pipeline
+    is_flux = 'flux' in args.model_name.lower()
+    pipe = (FluxPipeline if is_flux else StableDiffusion3Pipeline).from_pretrained(
+        args.model_name, torch_dtype=torch.bfloat16 if is_flux else torch.float16, device_map="balanced",  use_safetensors=True
+    )
 
-    # Construct file paths based on flags
-    data_base_name = f'{p}_{args.threshold}_{args.n_samples}'
-    
-    # Normal/Steering Vector Path
-    normal_suffix = '_normals_separate.pt' if args.separate_normals else '_diff.pt'
-    steering_vector_path = os.path.join(args.data_dir, data_base_name + normal_suffix)
-    vector = torch.load(steering_vector_path)
+    # Load Vectors
+    vector = torch.load(os.path.join(args.data_dir, f'base_0.85_20_{args.vector_type}.pt'))
+    if args.steer_txt:
+        vector_txt =torch.load(os.path.join(args.data_dir, f'base_0.85_20_text_diff.pt'))
+        # if args.task == 'remove':
+        #     vector_txt['sequence'] = -vector_txt['sequence']
+        #     vector_txt['pooled'] = -vector_txt['pooled']
+    txt_steering = {'vector': vector_txt, 'strength': args.strength_txt} if args.steer_txt else {'vector': None}
 
-    # SVM Model Path
-    svm_model_path = os.path.join(args.data_dir, data_base_name + '_svm_models.pt') if args.save_svm else None
-    
-    # Best Tokens Path
-    token_best_path = os.path.join(args.data_dir, data_base_name + '.pt') if args.best_tokens else None
-    
-    # Scores/Mask Path
-    scores_path = os.path.join(args.data_dir, data_base_name + '_scores.pt') if args.best_blocks else None
-    
-    # --- 2. Load Prompts and Setup Generation ---
-    os.makedirs(args.results_dir, exist_ok=True)
-
-    # Load prompts from a file (e.g., animals_prompt.txt)
-    coco_captions_path = args.prompts_path
+    # Load Prompts
     try:
-        with open(coco_captions_path, "r") as f:
-            coco_prompts = [line.strip() for line in f if line.strip()]
-        coco_prompts = coco_prompts[:args.num_prompts]
+        with open(args.prompts_path, "r") as f:
+            coco_prompts = [line.strip() for line in f if line.strip()][:args.num_prompts]
     except FileNotFoundError:
-        print(f"Warning: Prompt file '{coco_captions_path}' not found. Using default prompt.")
-        coco_prompts = [args.prompt]
+        coco_prompts = ["A high quality photo"]
 
-    # Parse block steering indices
-    block_steering: Union[str, List[int]]
-    if args.block_steering == '':
-        block_steering = []
-    else:
-        if args.block_steering.lower() != 'all':
-            try:
-                block_steering = [int(x.strip()) for x in args.block_steering.split(',')]
-            except ValueError:
-                print("Warning: Invalid format for --block_steering. Using 'all'.")
-                block_steering = 'all'
-        else:
-            block_steering = 'all'
-
-    t_steering: Union[str, List[int]]
-    if args.t_steering == '':
-        t_steering = []
-    else:
-        if args.t_steering.lower() != 'all':
-            try:
-                t_steering = [int(x.strip()) for x in args.t_steering.split(',')]
-            except ValueError:
-                print("Warning: Invalid format for --block_steering. Using 'all'.")
-                t_steering = 'all'
-        else:
-            t_steering = 'all'
-
-    seeds = [10, 20, 30, 40, 50, 60]
-
-    # # ################
-    # seed = 42
-    # generator = torch.Generator(device="cpu").manual_seed(seed)
-
-    # p = "Two kids are playing baseball in Wii Sports anime style"
-    # res = pipe(p, num_inference_steps=20, guidance_scale=0.0, generator=generator,structure_strength=args.structure, photo=None).images[0]
-    # os.makedirs('test', exist_ok=True)
-    # from torchvision.utils import make_grid
-    # from torchvision.transforms import ToTensor
-    # from PIL import Image
-    # to_tensor = ToTensor()
-    
-    # # Determine the best grid layout (closest to square)
-    # def save_grid_image(images: List[Image.Image], filename: str):
-    #     if not images: return
-    #     n = len(images)
-    #     nrow = int(n**0.5) # Square root for grid size
-    #     tensors = [to_tensor(img) for img in images]
-    #     grid = make_grid(tensors, nrow=nrow, padding=2, normalize=False)
-    #     # Convert grid tensor back to PIL Image
-    #     img = Image.fromarray((grid.permute(1, 2, 0).numpy() * 255).astype(np.uint8))
-    #     img.save(os.path.join('test', filename))
-
-    # save_grid_image(
-    #     [res], 
-    #     f"positive_{0}_{0}_grid.png"
-    # )
-    # assert False
-
-    # --- 3. Run Generation Loop ---
+    # Main Loop
     for idx, prompt in enumerate(coco_prompts):
-        #prompt = "a nice blue eyed woman with black hair"
-        # if 'flux' in args.model_name.lower():
-        #     prompt = ''
-
-        #prompt = 'dog'
-        seed = args.seed
-       
         if args.task == 'remove':
-            #prompt = "A photo of a cool Spongebob" #"A photo of a cool Snoopy" #'A cartoon Snoopy'
-            #seed = seeds[idx]
-            #prompt = 'sketches, pencil_drawing style ' + prompt
-            #prompt = "A photo of a cool Spongebob" #"A photo of a cool Snoopy" #'A cartoon Snoopy'
-            #seed = seeds[idx]
-            prompt = prompt# + ' with hat'
+            prompt += args.remove_prompt
+        print(f"Processing {idx+1}/{len(coco_prompts)}: {prompt}", args.inference_steps, args.guidance_scale)
         
-        #prompt = prompt + ' with glasses'
+        hook_state, remove_hooks = apply_attention_steering(pipe, args, vector)
+        generator = torch.Generator().manual_seed(args.seed)
         
-        #prompt += ' anime style'
-        
-        # Setup the steering hooks and callback
-        step_callback, remove_hooks = apply_attention_steering(
-            pipe,
-            svm_model_path=svm_model_path,
-            scores_path=scores_path,
-            token_best_path=token_best_path,
-            steering_vectors=vector,
-            strength=args.strength,
-            block=block_steering,
-            t_steering=t_steering,
-            t_structure=args.t_structure,
-            block_structure=args.block_structure,
-            cls_min=args.cls_min,
-            orthogonal_projection=args.orthogonal_projection,
-            iterative_refinement=args.iterative_refinement,
-            quantile_level=args.quantile_level,
-            quantile_type=args.quantile_type,
-            cls_type=args.cls_type,
-            model_type=args.model_name,
-            task=args.task
-        )
-        
-        print(f"Processing prompt {idx + 1}/{len(coco_prompts)}: {prompt}")
-    
-        # Set up generator
-        generator = torch.Generator(device="cpu" if torch.cuda.is_available() else "cpu").manual_seed(seed)
-        
-        # Prepare photo for unconditioning (if provided)
-        photo = None
-        if args.photo_path is not None:
-            img = Image.open(args.photo_path).convert("RGB")
-            transform = T.Compose([
-                T.ToTensor(), 
-                T.Lambda(lambda x: x * 2.0 - 1.0)
-            ])
-            photo = transform(img).unsqueeze(0).to(pipe.device, dtype=pipe.dtype)
-        
-       # Run the generation pipeline
-        image = pipe(
-            prompt,
-            num_inference_steps=args.inference_steps,
-            guidance_scale=args.guidance_scale,
-            generator=generator,
-            structure_strength=args.structure,
-            photo=photo,
-            callback=step_callback, # Register the step callback here
-            callback_steps=1,
+        images = pipe(
+            prompt, num_inference_steps=args.inference_steps, guidance_scale=args.guidance_scale,
+            generator=generator, structure_strength=args.structure,
+            callback=lambda step, **k: hook_state.update({"step": step}), callback_steps=1,
+            txt_steering=txt_steering
         ).images
 
-        #Clean up hooks
-        remove_hooks()
-        
-
-        # image = pipe(
+        # images = pipe(
         #     prompt,
         #     num_inference_steps=args.inference_steps,
         #     guidance_scale=args.guidance_scale,
         #     generator=generator,
+        #    # callback=lambda step, **k: hook_state.update({"step": step}), callback_steps=1,
         # ).images
-        #assert False
 
-        # --- 4. Save Results ---
-        # Construct a descriptive filename based on active arguments
-        name_parts = ['base']
-        if args.best_tokens: name_parts.append('best_t')
-        if args.best_blocks: name_parts.append('best_b')
-        if args.save_svm: name_parts.append('cls')
-        if args.orthogonal_projection: name_parts.append('ortho')
-        if args.iterative_refinement: name_parts.append('iter')
-        if args.photo_path: name_parts.append('photo')
-        
-        name_suffix = "_".join(name_parts)
+        # images = pipe(
+        #     "Two kids are playing baseball in Wii Sports",
+        #     generator=generator,
+        #     num_inference_steps=40,
+        #     guidance_scale=4.5,
+        # ).images
 
-        # Sanitize prompt for filename
-        sanitized_prompt = prompt.replace(" ", "_").replace("/", "").replace(",", "")[:50]
-        
-        result_filename = (
-            f"{idx:02d}_{sanitized_prompt}_s{args.strength}_b{args.block_steering}_"
-            f"str{args.structure}_st_{args.t_steering}_cls{args.cls_min}_"
-            f"q{args.quantile_type}{args.quantile_level}_{name_suffix}_single_double_block_cls_mean_sim_01_mean_01.png"
-        )
+        # # Save Logic
+        sanitized = prompt.replace(" ", "_").replace("/", "").replace(",", "")[:50]
+        suffix = f"s_{args.strength}_mask_{args.use_ssim_mask}_v_{args.vector_type}"
         os.makedirs(os.path.join(args.results_dir, 'steered'), exist_ok=True)
-        image[0].save(os.path.join(args.results_dir, 'steered', result_filename))
-
-        if len(image) > 1:
-            if args.task == 'remove':
-                base_filename = f"{prompt}_{seed}.png"
-            else:
-                base_filename = f"{prompt}.png"
-            os.makedirs(os.path.join(args.results_dir, 'origin'), exist_ok=True)
-            image[1].save(os.path.join(args.results_dir, 'origin', base_filename))
-        #assert False
+        images[0].save(os.path.join(args.results_dir, 'steered', f"{idx:02d}_{sanitized}_{suffix}.png"))
         
-        #if 'flux' in args.model_name.lower():
-        # if idx >= 3:
-        #     assert False
+        if len(images) > 1:
+            os.makedirs(os.path.join(args.results_dir, 'origin'), exist_ok=True)
+            images[1].save(os.path.join(args.results_dir, 'origin', f"{idx:02d}_orig.png"))
+
+        remove_hooks()
+        if idx >= 28:
+            assert False

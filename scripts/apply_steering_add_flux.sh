@@ -104,22 +104,22 @@
 #        --prompts_path 'simple_prompts_add.txt' \
 #        --results_dir 'add_experiments_flux_schnell/generated_images/txt_blocks_test_apple/test_new'
 
-CUDA_VISIBLE_DIVECES=1,2,3, python apply_steering_with_injection_flux.py \
-       --structure 2.0 \
-       --strength 10000.0 \
-       --n_samples 20 \
-       --data_dir add_experiments_flux_schnell/final_steering/fox_wolf/base \
-       --t_structure 1500 \
-       --block_structure 0 \
-       --block_steering 'all' \
-       --model_name black-forest-labs/FLUX.1-schnell \
-       --inference_steps 4 \
-       --save_svm \
-       --guidance_scale 0.0 \
-       --cls_min 21 \
-       --block_steering 'all' \
-       --prompts_path 'simple_prompts_animal.txt' \
-       --results_dir 'add_experiments_flux_schnell/generated_images/txt_blocks_test_fox_wolf/test_new'
+# CUDA_VISIBLE_DIVECES=1,2,3, python apply_steering_with_injection_flux.py \
+#        --structure 2.0 \
+#        --strength 10000.0 \
+#        --n_samples 20 \
+#        --data_dir add_experiments_flux_schnell/final_steering/fox_wolf/base \
+#        --t_structure 1500 \
+#        --block_structure 0 \
+#        --block_steering 'all' \
+#        --model_name black-forest-labs/FLUX.1-schnell \
+#        --inference_steps 4 \
+#        --save_svm \
+#        --guidance_scale 0.0 \
+#        --cls_min 21 \
+#        --block_steering 'all' \
+#        --prompts_path 'simple_prompts_animal.txt' \
+#        --results_dir 'add_experiments_flux_schnell/generated_images/txt_blocks_test_fox_wolf/test_new'
 
 
 # CUDA_VISIBLE_DIVECES=1,0,2,3, python apply_steering_with_injection_flux.py \
@@ -157,23 +157,23 @@ CUDA_VISIBLE_DIVECES=1,2,3, python apply_steering_with_injection_flux.py \
 #        --results_dir 'add_experiments_flux_schnell/generated_images/txt_blocks_test_apple/test_new'
 
 
-# CUDA_VISIBLE_DIVECES=1,0,2,3, python apply_steering_with_injection_flux.py \
-#        --structure 0.0 \
-#        --strength 5000.0 \
-#        --n_samples 20 \
-#        --data_dir add_experiments_flux_schnell/final_steering/glasses/base \
-#        --t_structure 1500 \
-#        --block_structure 0 \
-#        --block_steering 'all' \
-#        --model_name black-forest-labs/FLUX.1-schnell \
-#        --inference_steps 4 \
-#        --save_svm \
-#        --guidance_scale 0.0 \
-#        --cls_min 21 \
-#        --block_steering 'all' \
-#        --task 'remove' \
-#        --prompts_path 'simple_prompts_add.txt' \
-#        --results_dir 'add_experiments_flux_schnell/generated_images/txt_blocks_test_glasses/test_new_remove'
+CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection.py \
+       --structure 1.0 \
+       --strength 0.0 \
+       --n_samples 20 \
+       --data_dir add_experiments_flux_schnell/final_steering/glasses/base \
+       --t_structure 1500 \
+       --block_structure 0 \
+       --block_steering 'all' \
+       --model_name black-forest-labs/FLUX.1-schnell \
+       --inference_steps 4 \
+       --save_svm \
+       --guidance_scale 0.0 \
+       --cls_min 21 \
+       --block_steering 'all' \
+       --task 'remove' \
+       --prompts_path "prompts_collection/ablation/ablation_prompts_add.txt" \
+       --results_dir 'add_experiments_flux_schnell/generated_images/txt_blocks_test_glasses/test_new_remove_5'
 
 # CUDA_VISIBLE_DIVECES=1,0,2,3, python apply_steering_with_injection_flux.py \
 #        --structure 0.0 \

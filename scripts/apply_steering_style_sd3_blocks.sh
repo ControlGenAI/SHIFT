@@ -1,15 +1,14 @@
-# CUDA_VISIBLE_DIVECES=2, python apply_steering_with_injection.py \
-#        --structure 1.0 \
-#        --strength 15 \
-#        --n_samples 20 \
-#        --data_dir style_experiments/final_steering/cyberpunk/base \
-#        --t_structure 1700 \
-#        --block_structure 0 \
-#        --save_svm \
-#        --inference_steps 20 \
-#        --orthogonal_projection \
-#        --block_steering '0,1,2,3,4' \
-#        --results_dir 'style_experiments/generated_images/cyberpunk/base_0-4_blocks'
+CUDA_VISIBLE_DIVECES=2, python apply_steering_with_injection.py \
+       --structure 1.0 \
+       --strength 15 \
+       --n_samples 20 \
+       --data_dir style_experiments/final_steering/cyberpunk/base \
+       --t_structure 1700 \
+       --block_structure 0 \
+       --save_svm \
+       --inference_steps 20 \
+       --block_steering 'all' \
+       --results_dir 'results_debug/old_sd3'
 
 # CUDA_VISIBLE_DIVECES=2, python apply_steering_with_injection.py \
 #        --structure 1.0 \

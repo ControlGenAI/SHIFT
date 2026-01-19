@@ -15,12 +15,64 @@ from flux import FluxPipeline
 #from diffusers import StableDiffusion3Pipeline 
 from sd_3_injection import JointAttnProcessor2_Injection 
 import sklearn.svm._classes 
+import torch.nn.functional as F
 from utils import load_steering_data, calculate_cls_score, norm_based_steering_f, orthogonal_projection_steering
 
 
 # ==============================================================================
 # ------------------------------ Main Steering Logic ---------------------------
 # ==============================================================================
+
+class SteeringEngine:
+
+    @classmethod
+    def apply_steering(
+        cls, 
+        activations: torch.Tensor, 
+        steering_vec: torch.Tensor, 
+        args, 
+        score_val: torch.Tensor
+    ) -> torch.Tensor:
+        dtype = activations.dtype
+        act_f32 = activations.float()
+        orig_norm = torch.norm(act_f32, dim=-1, keepdim=True) + 1e-6
+        act_unit = act_f32 / orig_norm
+        
+        v_unit = steering_vec.float() / (torch.norm(steering_vec.float(), dim=-1, keepdim=True) + 1e-6)
+        
+        # # 1. Orthogonal Projection
+        v_steer = orthogonal_projection_steering(v_unit, act_f32) if args.orthogonal_projection else v_unit
+
+        # # 2. SSIM Masking (Now active for BOTH Add and Remove)
+        #if args.use_ssim_mask:
+            # assert False
+            # sim = F.cosine_similarity(act_unit, v_unit, dim=-1)
+            # k_val = max(1, int(sim.shape[0] * args.top_k_percent))
+            # threshold = torch.topk(sim.flatten(), k_val).values[-1]
+            # mask = (sim >= threshold).float().unsqueeze(-1)
+            
+            # # Use similarity weight only for removal tasks
+            # weight = sim.unsqueeze(-1) if args.task == 'remove' else 1.0
+        #else:
+        mask, weight = 1.0, 1.0
+
+        # # 3. Task Logic
+        if args.task == 'remove':
+            adjustment = args.strength * weight * v_steer * mask
+            steered = act_f32 - (adjustment * score_val)
+        else:
+            # Masked addition targets concept-relevant tokens
+            #print(act_f32.shape, v_steer.shape, mask, args.strength * mask)
+            adjustment = v_steer.to(activations.dtype) * args.strength * mask
+            #print(act_f32.norm(dim=-1), v_steer.norm(dim=-1), adjustment.shape)
+           
+            steered = activations + (adjustment[0] * score_val[0])
+        #steered = steering_vec.to(activations.dtype) * score_val[0] + activations
+        # 4. Energy Restoration
+        steered_unit = steered.float() / (torch.norm(steered.float(), dim=-1, keepdim=True) + 1e-6)
+        return (steered_unit * orig_norm).to(dtype)
+
+
 
 def apply_attention_steering(
     pipe: StableDiffusion3Pipeline,
@@ -43,6 +95,7 @@ def apply_attention_steering(
     quantile_level: float = 0.5,
     cls_type: str = 'steep',
     model_type=None,
+    args=None,
 ) -> Tuple[Callable, Callable]:
     """
     Applies attention steering vectors during generation by registering forward hooks.
@@ -83,10 +136,15 @@ def apply_attention_steering(
             nonlocal current_step
             device = output[0].device
             dtype = output[0].dtype
-
-            
-            # --- Check Conditions for Steering ---
+           
             if current_step not in steering_vectors or f"layer_{layer_idx}" not in steering_vectors[current_step]:
+                if 'flux' in model_type.lower():
+                    layers_idx_tg = 56
+                else: 
+                    layers_idx_tg = 23
+                
+                if layer_idx == layers_idx_tg:
+                    current_step += 1
                 return output
             
             # Check if layer is in the specified steering blocks
@@ -108,7 +166,10 @@ def apply_attention_steering(
                 return output
 
             # Load steering data for the current step and layer
-            vec_data = steering_vectors[current_step][f"layer_{layer_idx}"]
+           
+            print(current_step, layer_idx)
+            
+            vec_data = steering_vectors[current_step][f"layer_{layer_idx}"]#.mean(0, keepdim=True)
             layer_models = models[current_step][f"layer_{layer_idx}"] if models is not None else None
             
             # Handle single vs. multiple SVM models (if layer_models is a list/tuple)
@@ -124,13 +185,24 @@ def apply_attention_steering(
                 else:
                     activations_to_modify = output[output_idx][1].clone() # Shape [L, D] (for tokens)
             else:
-                if layer_idx < 30:
+                if 'flux' in model_type.lower():
+                    layers_idx_tg = 56
+                else: 
+                    layers_idx_tg = 23
+                print(layer_idx, layers_idx_tg)
+                if layer_idx == layers_idx_tg:
+                    print('hhehehe')
+                    current_step += 1
+                return output
+                #assert False
+                if True:
                     if 'flux' in model_type.lower():
                         layers_idx_tg = 56
                     else: 
                         layers_idx_tg = 23
-                    
+                    print(layer_idx, layers_idx_tg)
                     if layer_idx == layers_idx_tg:
+                        print('hhehehe')
                         current_step += 1
                     return output
                 else:
@@ -138,7 +210,7 @@ def apply_attention_steering(
                     activations_to_modify = output[0, :512, :].clone()
 
             original_norm = torch.norm(activations_to_modify.float(), dim=-1, keepdim=True) + 1e-6
-            normalized_activations = activations_to_modify.clone() / original_norm # Clone to modify in place
+            normalized_activations = activations_to_modify.clone().float() / original_norm # Clone to modify in place
 
             # Check if there are best tokens or if we steer all tokens
             token_indices = tokens_best[current_step][layer_idx] if tokens_best is not None else None
@@ -153,21 +225,31 @@ def apply_attention_steering(
 
             if activations == 'attn_enc' or activations == 'attn_im':
                 if task == 'remove':
-                    #assert False
                     v_norm = torch.norm(steering_tensor.float(), dim=-1, keepdim=True)
                     steering_tensor = steering_tensor / (v_norm + 1e-6)
 
                     #sim = (normalized_activations * steering_tensor[0]).sum(dim=1, keepdim=True)
-                    sim = (normalized_activations * steering_tensor).sum(dim=1, keepdim=True)
+                    #sim = (normalized_activations * steering_tensor).sum(dim=1, keepdim=True)
+                    # F.cosine_similarity(seqs_style, prompt_embeds, dim=1)
     
-                    sim = F.relu(sim)  # Shape (N, 1)
+                    # sim = F.relu(sim)  # Shape (N, 1)
+                    sim = F.cosine_similarity(normalized_activations, steering_tensor, dim=1)
+                    #sim = F.relu(sim)
 
+                    k_ratio = 0.25 # Top 25% of most correspondent tokens
+                    k_val = int(sim.shape[0] * k_ratio)
+                    
+                    # We combine ReLU (only positive sim) with a Top-K mask
+                    threshold = torch.topk(sim.flatten(), k_val).values[-1]
+                    # sim_mask is 1.0 for the highest similarity tokens, 0.0 otherwise
+                    sim_mask = (sim >= threshold).float() * (sim > 0).float()
                     score_value = torch.tensor([1.0]).unsqueeze(1).to(device, dtype).repeat(steering_tensor.shape[0], 1)
                     
                     score_mask = 1.0  
                     if layer_models:
                         if steer_all_tokens:
                             a = normalized_activations.mean(0)[None].cpu().clone() 
+                            a = a / a.norm(dim=-1)
                         else:
                             a = normalized_activations[token_indices].mean(0)[None].cpu().clone() 
                         
@@ -186,21 +268,23 @@ def apply_attention_steering(
                         #score_value = torch.mean(torch.tensor(scoreeee_list)).to(device, dtype)
                         if 'flux' in model_type.lower():
                             score_value = torch.tensor(scoreeee_all).unsqueeze(1).to(device, dtype)
-                            score_value = torch.ones_like(score_value)
+                            #score_value = torch.ones_like(score_value)
                         else:
                             score_value = torch.tensor(scoreeee_all).unsqueeze(1).to(device, dtype)
-                            # score_value = torch.ones_like(score_value)
+                            #score_value = torch.ones_like(score_value)
                             #print(layer_idx, current_step, score_value, scoreeee, score_cls, cls_min, distance_all) 
                             #print(layer_idx)
                         
                     #subtraction_term = strength * sim * (steering_tensor * score_value)[0]
-                    subtraction_term = strength * sim * (steering_tensor * score_value[0])
+                    print(strength * score_value.mean(0) )
+                    subtraction_term = strength * sim.unsqueeze(1)  * (steering_tensor.unsqueeze(0) * score_value.mean(0)) * sim_mask.unsqueeze(1)
+                    # subtraction_term = strength * sim.unsqueeze(1)  * (steering_tensor * score_value.mean(0)) 
                     # 5. Perform the subtraction
                     steered_normalized_output = activations_to_modify - subtraction_term
 
                     vector_direction = steered_normalized_output.float()
                     vector_direction = vector_direction / (torch.norm(vector_direction, dim=-1, keepdim=True) + 1e-6)
-                    print(current_step,score_value, score_cls_all, layer_idx, calculate_cls_score(vector_direction.cpu().float().mean(0, keepdim=True), cls_min, model=layer_models[0], cls_type=cls_type, use_distance=False, task='remove'))
+                    #print(current_step,score_value, score_cls_all, layer_idx, calculate_cls_score(vector_direction.cpu().float().mean(0, keepdim=True), cls_min, model=layer_models[0], cls_type=cls_type, use_distance=False, task='remove'))
                     # Step B: Multiply by the original norm to restore magnitude
                     vector_restored_norm = vector_direction * original_norm.float()
                     
@@ -235,7 +319,8 @@ def apply_attention_steering(
                 ################################################
                 if task == 'add concept':
                     v_norm = torch.norm(steering_tensor.float(), dim=-1, keepdim=True)
-                    steering_tensor = steering_tensor / (v_norm + 1e-6)
+                    origin_vec = steering_tensor.clone()
+                    steering_tensor = steering_tensor.float() / (v_norm + 1e-6)
 
                 # 1. Calculate Score (based on SVM distance or fallback)
                 score_value = torch.tensor([1.0]).unsqueeze(1).to(device, dtype).repeat(steering_tensor.shape[0], 1)
@@ -243,6 +328,7 @@ def apply_attention_steering(
                 if layer_models:
                     if steer_all_tokens:
                         a = normalized_activations.mean(0)[None].cpu().clone() 
+                        a = a / a.norm(dim=-1)
                     else:
                         a = normalized_activations[token_indices].mean(0)[None].cpu().clone() 
                     
@@ -264,9 +350,13 @@ def apply_attention_steering(
                         score_value = torch.ones_like(score_value)
                     else:
                         score_value = torch.tensor(scoreeee_all).unsqueeze(1).to(device, dtype)
-                        
+                        #score_value = torch.ones_like(score_value)
+                        #print(layer_idx, current_step, score_value, scoreeee, score_cls, cls_min, distance_all) 
+                        #print(layer_idx)
+
                 # 2. Apply Quantile Mask (for best blocks/tokens)
                 if scores_all is not None:
+                    assert False
                     # Determine the quantile threshold for the current step/layer
                     q = quantiles
                     if quantile_type == 'block':
@@ -356,12 +446,30 @@ def apply_attention_steering(
                         alpha = 1
                     if len(steering_to_add.shape) == 3:
                         adjustment_scale = adjustment_scale[:, None]
-
-                    print(adjustment_scale, original_norm.max())
-
                     
+                    add_sim = False
+                    if add_sim:
+                        #assert False
+                        sim_add = F.cosine_similarity(normalized_activations, steering_to_add, dim=1).unsqueeze(1)
+                        k_ratio = 0.1
+                        k_val = int(sim_add.shape[0] * k_ratio)
+                        
+                        if k_val > 0:
+                            # Find the threshold value for the top K
+                            threshold = torch.topk(sim_add.flatten(), k_val).values[-1]
+                            sim_mask = (sim_add >= threshold).float()
+                        else:
+                            # Fallback for very short sequences
+                            sim_mask = (sim_add > 0.1).float()
 
-                    steered_normalized_output = alpha * activations_to_modify + (steering_to_add * adjustment_scale).mean(0)
+                    #steered_normalized_output = alpha * activations_to_modify + (steering_to_add * adjustment_scale[0])# * sim_mask
+
+
+                    #steered_normalized_output = alpha * activations_to_modify + (steering_to_add * adjustment_scale).mean(0)
+                    else:
+                        print(steering_to_add.shape, steering_to_add.norm(dim=-1), activations_to_modify.norm(dim=-1))
+                        #steered_normalized_output = alpha * activations_to_modify + (steering_to_add * adjustment_scale[0])
+                        steered_normalized_output = SteeringEngine.apply_steering(activations_to_modify, origin_vec, args, score_value)
 
                 elif token_indices is not None:
                     # Apply only to selected tokens (applies to normalized tensor)
@@ -379,14 +487,15 @@ def apply_attention_steering(
             # --- 5. Restore Original Norm (Final Normalization Logic) ---
             
             # Step A: Renormalize the *steered* vector to ensure unit length direction
-            vector_direction = steered_normalized_output.float()
-            vector_direction = vector_direction / (torch.norm(vector_direction, dim=-1, keepdim=True) + 1e-6)
-            print(current_step, layer_idx, calculate_cls_score(vector_direction.cpu().float(), cls_min, model=layer_models[0], cls_type=cls_type, use_distance=False))
+            #vector_direction = steered_normalized_output.float()
+            #vector_direction = vector_direction / (torch.norm(vector_direction, dim=-1, keepdim=True) + 1e-6)
+            #print(current_step, layer_idx, calculate_cls_score(vector_direction.cpu().float().mean(0, keepdim=True), cls_min, model=layer_models[0], cls_type=cls_type, use_distance=False))
             # Step B: Multiply by the original norm to restore magnitude
-            vector_restored_norm = vector_direction * original_norm.float()
-            
+            #vector_restored_norm = vector_direction * original_norm.float()
+            #torch.save(vector_restored_norm, f'activations_test_mix/output_act_{current_step}_{layer_idx}.pt')
+            #print(score_value, vector_direction.norm(dim=-1).mean(), vector_restored_norm.min(), vector_restored_norm.max(), vector_restored_norm.mean())
             # Step C: Assemble the final output tuple
-            new_output_embeddings = vector_restored_norm.to(dtype)
+            new_output_embeddings = steered_normalized_output.to(dtype)
             
 
             if double_block:
@@ -562,7 +671,7 @@ if __name__ == "__main__":
     normal_suffix = '_normals_separate.pt' if args.separate_normals else '_diff.pt'
     steering_vector_path = os.path.join(args.data_dir, data_base_name + normal_suffix)
     vector = torch.load(steering_vector_path)
-
+    
     # SVM Model Path
     svm_model_path = os.path.join(args.data_dir, data_base_name + '_svm_models.pt') if args.save_svm else None
     
@@ -653,40 +762,44 @@ if __name__ == "__main__":
         seed = args.seed
        
         if args.task == 'remove':
-            prompt = "A photo of a cool Snoopy" #"A photo of a cool Snoopy" #'A cartoon Snoopy'
-            seed = seeds[idx]
+            #prompt = "A photo of a cool Spongebob" #"A photo of a cool Snoopy" #'A cartoon Snoopy'
+            #seed = seeds[idx]
             #prompt = 'sketches, pencil_drawing style ' + prompt
+            #prompt = "A photo of a cool Spongebob" #"A photo of a cool Snoopy" #'A cartoon Snoopy'
+            #seed = seeds[idx]
+            prompt = prompt + ' with glasses'
+        
+        #prompt = prompt + ' with glasses'
         
         #prompt += ' anime style'
         
         # Setup the steering hooks and callback
-        step_callback, remove_hooks = apply_attention_steering(
-            pipe,
-            svm_model_path=svm_model_path,
-            scores_path=scores_path,
-            token_best_path=token_best_path,
-            steering_vectors=vector,
-            strength=args.strength,
-            block=block_steering,
-            t_steering=t_steering,
-            t_structure=args.t_structure,
-            block_structure=args.block_structure,
-            cls_min=args.cls_min,
-            orthogonal_projection=args.orthogonal_projection,
-            iterative_refinement=args.iterative_refinement,
-            quantile_level=args.quantile_level,
-            quantile_type=args.quantile_type,
-            cls_type=args.cls_type,
-            model_type=args.model_name,
-            task=args.task
-        )
+        # step_callback, remove_hooks = apply_attention_steering(
+        #     pipe,
+        #     svm_model_path=svm_model_path,
+        #     scores_path=scores_path,
+        #     token_best_path=token_best_path,
+        #     steering_vectors=vector,
+        #     strength=args.strength,
+        #     block=block_steering,
+        #     t_steering=t_steering,
+        #     t_structure=args.t_structure,
+        #     block_structure=args.block_structure,
+        #     cls_min=args.cls_min,
+        #     orthogonal_projection=args.orthogonal_projection,
+        #     iterative_refinement=args.iterative_refinement,
+        #     quantile_level=args.quantile_level,
+        #     quantile_type=args.quantile_type,
+        #     cls_type=args.cls_type,
+        #     model_type=args.model_name,
+        #     task=args.task,
+        #     args=args
+        # )
         
         print(f"Processing prompt {idx + 1}/{len(coco_prompts)}: {prompt}")
     
         # Set up generator
-        print(seed,args.guidance_scale)
-        
-        generator = torch.Generator(device="cuda" if torch.cuda.is_available() else "cpu").manual_seed(seed)
+        generator = torch.Generator(device="cpu" if torch.cuda.is_available() else "cpu").manual_seed(seed)
         
         # Prepare photo for unconditioning (if provided)
         photo = None
@@ -699,20 +812,19 @@ if __name__ == "__main__":
             photo = transform(img).unsqueeze(0).to(pipe.device, dtype=pipe.dtype)
         
        # Run the generation pipeline
-        
         image = pipe(
             prompt,
             num_inference_steps=args.inference_steps,
             guidance_scale=args.guidance_scale,
             generator=generator,
             structure_strength=args.structure,
-            photo=photo,
-            callback=step_callback, # Register the step callback here
-            callback_steps=1,
+            #photo=photo,
+            #callback=step_callback, # Register the step callback here
+            #callback_steps=1,
         ).images
 
         #Clean up hooks
-        remove_hooks()
+        #remove_hooks()
         
 
         # image = pipe(
@@ -741,7 +853,7 @@ if __name__ == "__main__":
         result_filename = (
             f"{idx:02d}_{sanitized_prompt}_s{args.strength}_b{args.block_steering}_"
             f"str{args.structure}_st_{args.t_steering}_cls{args.cls_min}_"
-            f"q{args.quantile_type}{args.quantile_level}_{name_suffix}_diff_normed_noisy2.png"
+            f"q{args.quantile_type}{args.quantile_level}_{name_suffix}_single_double_block_cls_mean_sim_01_mean_01.png"
         )
         os.makedirs(os.path.join(args.results_dir, 'steered'), exist_ok=True)
         image[0].save(os.path.join(args.results_dir, 'steered', result_filename))
@@ -753,6 +865,8 @@ if __name__ == "__main__":
                 base_filename = f"{prompt}.png"
             os.makedirs(os.path.join(args.results_dir, 'origin'), exist_ok=True)
             image[1].save(os.path.join(args.results_dir, 'origin', base_filename))
-
         #assert False
+        
         #if 'flux' in args.model_name.lower():
+        # if idx >= 3:
+        #     assert False

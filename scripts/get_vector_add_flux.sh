@@ -42,7 +42,7 @@ PYTHON_SCRIPT='get_vector.py'
 CURRENT_SAVE_DIR="${SAVE_BASE_DIR}/${POS_CONCEPT_KEY}"
 mkdir -p "$CURRENT_SAVE_DIR"
 
-python "$PYTHON_SCRIPT" \
+CUDA_VISIBLE_DIVECES=1,2,3, python "$PYTHON_SCRIPT" \
         --task "concrete" \
         --num_prompts "$NUM_PROMPTS" \
         --pos_concept "$POS_CONCEPT_PROMPT" \

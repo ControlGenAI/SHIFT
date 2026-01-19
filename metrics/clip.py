@@ -7,6 +7,7 @@ import numpy as np
 import argparse
 from transformers import CLIPProcessor, CLIPModel
 import natsort
+import json
 
 
 # --- Configuration & Initialization ---
@@ -110,25 +111,36 @@ def compute_clip_reward_metrics(origin_dir, target_dirs, image_prompts, style_pr
     # Process each target directory
     for target_dir_path in target_dirs:
         dir_name = os.path.basename(os.path.normpath(target_dir_path))
-        print(f"\nCalculating CLIP/Reward metrics for target directory: {dir_name}")
+        print(f"\nCalculating CLIP/Reward metrics for target directory: {target_dir_path}")
 
         clip_img_sims, clip_scores, reward_scores, reward_scores_origin, clip_scores_origin  = [], [], [], [], []
         
+        all_target_files = os.listdir(target_dir_path) #{f: f.rsplit('.', 1)[0] for f in os.listdir(target_dir_path) if os.path.isfile(os.path.join(origin_dir, f))}
+        #print(all_target_files)
+        # Filter files to only those that match the base prompts and sort them
+        names_origin = []
+        names_target = []
+        file_list_target = natsort.natsorted(all_target_files)
         for i, fname in tqdm(enumerate(file_list), desc=f"Processing {dir_name}"):
             # Get the base prompt name (e.g., 'prompt_0' from 'prompt_0.png')
             prompt_base_name = fname.rsplit('.', 1)[0]
             prompt_name = prompts[i]
-            
-            target_img_path = os.path.join(origin_dir, fname)
+
+            origin_img_path = os.path.join(origin_dir, fname)
             #target_img_path = os.path.join(target_dir_path, fname)
-            origin_img_path = os.path.join(target_dir_path, prompt_name + '.png')
             
+            target_img_path = os.path.join(target_dir_path, file_list_target[i])
             
+            # print(target_img_path)
+            # print(origin_img_path)
+            # print("-" * 10)
             # Check if both files exist (the target directory must contain the same files)
             
             origin_img = Image.open(origin_img_path).convert("RGB")
             target_img = Image.open(target_img_path).convert("RGB")
-               
+            
+            names_origin.append(fname)
+            names_target.append( file_list_target[i])
 
             # Compute CLIP Embeddings
             origin_clip_feat = get_clip_image_embedding(origin_img)
@@ -153,22 +165,64 @@ def compute_clip_reward_metrics(origin_dir, target_dirs, image_prompts, style_pr
             # Use the image's base prompt for the Image Reward model (Content Alignment/Quality)
             reward_score_origin = compute_clip_score(origin_img, prompt_name) 
             reward_scores_origin.append(reward_score_origin)
+    
+    # 1. Calculate Mean Metrics
+    summary_metrics = {
+        "mean_clip_img_sim": float(np.mean(clip_img_sims)) if clip_img_sims else None,
+        "mean_clip_score": float(np.mean(clip_scores)) if clip_scores else None,
+        "mean_reward_score": float(np.mean(reward_scores)) if reward_scores else None,
+        "mean_reward_score_origin": float(np.mean(reward_scores_origin)) if reward_scores_origin else None,
+        "mean_clip_score_origin": float(np.mean(clip_scores_origin)) if clip_scores_origin else None
+    }
+
+    # 2. Create Per-Image Dictionary ("idx: metrics")
+    per_image_metrics = {}
+    for i in range(len(clip_img_sims)):
+        # Using string 'i' because JSON keys must be strings
+        per_image_metrics[str(i)] = {
+            "clip_img_sim": clip_img_sims[i],
+            "clip_score": clip_scores[i],
+            "reward_score": reward_scores[i],
+            "reward_score_origin": reward_scores_origin[i],
+            "clip_score_origin": clip_scores_origin[i],
+            "name_origin": names_origin[i],
+            "name_target": names_target[i]
+        }
+
+    # 3. Save to Files
+    # Ensure results_dir exists
+    os.makedirs(args.save_dir, exist_ok=True)
+
+    # Save Summary
+    print(summary_metrics)
+    print("-" * 10)
+    summary_path = os.path.join(args.save_dir, "summary_metrics.json")
+    with open(summary_path, 'w') as f:
+        json.dump(summary_metrics, f, indent=4)
+
+    # Save Per-Image
+    detailed_path = os.path.join(args.save_dir, "per_image_metrics.json")
+    with open(detailed_path, 'w') as f:
+        json.dump(per_image_metrics, f, indent=4)
+
+    print(f"Metrics successfully saved to {args.save_dir}")
         
         # Aggregate Results
-        results = {}
-        results['clip_img_sim'] = np.mean(clip_img_sims) if clip_img_sims else None
-        results['clip_score_vs_style'] = np.mean(clip_scores) if clip_scores else None
-        results['image_reward_mock'] = np.mean(reward_scores) if reward_scores else None
-        results['clip_score_vs_style_origin'] = np.mean(clip_scores_origin) if clip_scores_origin else None
-        results['image_reward_mock_origin'] = np.mean(reward_scores_origin) if reward_scores_origin else None
+    #     results = {}
+    #     results['clip_img_sim'] = np.mean(clip_img_sims) if clip_img_sims else None
+    #     results['clip_score_vs_style'] = np.mean(clip_scores) if clip_scores else None
+    #     results['image_reward_mock'] = np.mean(reward_scores) if reward_scores else None
+    #     results['clip_score_vs_style_origin'] = np.mean(clip_scores_origin) if clip_scores_origin else None
+    #     results['image_reward_mock_origin'] = np.mean(reward_scores_origin) if reward_scores_origin else None
 
-        metrics_clip_reward[dir_name] = results
+    #     metrics_clip_reward[dir_name] = results
 
-    # Save Results
-    os.makedirs(save_dir, exist_ok=True)
-    output_path = os.path.join(save_dir, SAVE_FILENAME)
-    torch.save(metrics_clip_reward, output_path)
-    print(f"\n✅ CLIP and Reward metrics computed and saved to: {output_path}")
+    # # Save Results
+    # print(results)
+    # os.makedirs(save_dir, exist_ok=True)
+    # output_path = os.path.join(save_dir, SAVE_FILENAME)
+    # torch.save(metrics_clip_reward, output_path)
+    # print(f"\n✅ CLIP and Reward metrics computed and saved to: {output_path}")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Compute CLIP and Reward Metrics.")

@@ -103,7 +103,7 @@ def register_attr(model, a, t):
 
             block.attn2.t = t
             block.attn2.a = a
-            print("hhh")
+            #print("hhh")
         except:
             pass
         
@@ -1015,9 +1015,9 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
                 original_pooled_prompt_embeds = pooled_prompt_embeds
 
             ##############
-            embeds_steered = torch.load('/home/jovyan/shares/SR006.nfs2/konovalova/workspace/attention-map-diffusers/steering_vecs_clean/remove_experiments/data_vectors_txt/Spongebob_txt__prompts_20_diff_embeddings.pt')
-            seqs_steered = embeds_steered['sequence'].to(pooled_prompt_embeds.dtype).to(pooled_prompt_embeds.device).mean(0, keepdim=True) * 1.2
-            pooled_steered = embeds_steered['pooled'].to(pooled_prompt_embeds.dtype).to(pooled_prompt_embeds.device).mean(0, keepdim=True) * 1.2
+            # embeds_steered = torch.load('/home/jovyan/shares/SR006.nfs2/konovalova/workspace/attention-map-diffusers/steering_vecs_clean/remove_experiments/data_vectors_txt/Spongebob_txt__prompts_20_diff_embeddings.pt')
+            # seqs_steered = embeds_steered['sequence'].to(pooled_prompt_embeds.dtype).to(pooled_prompt_embeds.device).mean(0, keepdim=True) * 1.2
+            # pooled_steered = embeds_steered['pooled'].to(pooled_prompt_embeds.dtype).to(pooled_prompt_embeds.device).mean(0, keepdim=True) * 1.2
             
             prompt_embeds_steered = torch.cat([negative_prompt_embeds, prompt_embeds], dim=0)
             pooled_prompt_embeds_steered = torch.cat([negative_pooled_prompt_embeds, pooled_prompt_embeds], dim=0)
@@ -1039,7 +1039,7 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
             latents,
         )
 
-        photo = args['photo']
+        photo = None # args['photo']
         if photo is not None:
             # Encode photo (in [-1, 1]) to latents for diffusion
             photo =  self.image_processor.preprocess(  # Center crop + resize

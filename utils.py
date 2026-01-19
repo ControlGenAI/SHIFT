@@ -5,7 +5,7 @@ import numpy as np
 import math
 from typing import Dict, Any, Optional, List, Tuple, Union
 import os
-
+import torch.nn.functional as F
 import sklearn.svm._classes
 
 def orthogonal_projection_steering(
@@ -28,6 +28,7 @@ def orthogonal_projection_steering(
         The orthogonal steering tensor, with the same shape as current_output/steering_tensor.
     """
     # 1. Standardize and check shapes
+    assert False
     original_dtype = current_output.dtype
     output_f = current_output.float()
     steering_f = steering_tensor.float()
@@ -126,7 +127,7 @@ def calculate_cls_score(
     cls_min: float, 
     model: Optional[Any], 
     cls_type: str = 'steep',  # 'steep' or 'tanh'
-    use_distance: bool = True,
+    use_distance: bool = False,
     task='add'
 ):
     """
@@ -143,16 +144,18 @@ def calculate_cls_score(
     Returns:
         Tuple: (final_score, probability_score, distance)
     """
-    print(cls_min)
+    #print(cls_min)
     if not use_distance:
         score_cls = model.predict_proba(a) if model is not None else np.array([[0.5, 0.5]])
-        if task == 'add':
-            scoreeee =  21 * score_cls[0][1]**2   #min(cls_min, (1 / ((1 - score_cls[0][0]) + 1e-8) - 1))
+        if task == 'add concept':
+            assert False
+            scoreeee =  min(cls_min, (1 / ((1 - score_cls[0][0]) + 1e-8) - 1)) # 21 * score_cls[0][1]**2
         else:
             #assert False
             scoreeee = (1 / ((1 - score_cls[0][1]) + 1e-8) - 1).clip(0, cls_min) #  21 * score_cls[0][1]**2  
+            print('dd', scoreeee)
         return scoreeee, score_cls[0][0], None
-
+    assert False
     model_instance = model[0] if isinstance(model, (list, tuple)) else model
     
     distance = model_instance.decision_function(a.cpu())[0]
@@ -189,18 +192,73 @@ def calculate_cls_score(
     return final_score, prob_score, distance
 
 
+def apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_style, normed=True):
+    if not normed:
+        new_pooled_embeds = pooled_prompt_embeds + pooled_style
+        new_prompt_embeds = prompt_embeds + seqs_style
+    else:
+        init_pooled_norm = pooled_prompt_embeds.norm(dim=-1, keepdim=True)
+        init_prompt_norm = prompt_embeds.norm(dim=-1, keepdim=True)
+
+        new_pooled_embeds = (pooled_prompt_embeds +  pooled_style)
+        new_pooled_embeds = new_pooled_embeds / new_pooled_embeds.norm(dim=-1, keepdim=True) * init_pooled_norm
+
+        new_prompt_embeds = (prompt_embeds +  seqs_style)
+        new_prompt_embeds = new_prompt_embeds / new_prompt_embeds.norm(dim=-1, keepdim=True) * init_prompt_norm
+
+
+    return new_pooled_embeds, new_prompt_embeds
+
+
+def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=False, ssim=False, pooled=True, normed=True):
+    seqs_style = vector_txt['sequence'].to(prompt_embeds.dtype).to(prompt_embeds.device).mean(0, keepdim=True) 
+    pooled_style = vector_txt['pooled'].to(prompt_embeds.dtype).to(prompt_embeds.device).mean(0, keepdim=True) 
+
+    if mean:
+        seqs_style = seqs_style.mean(1, keepdim=True) 
+
+    if ssim:
+        sim_add = -F.cosine_similarity(prompt_embeds.clone() / prompt_embeds.norm(dim=-1, keepdim=True), seqs_style.clone() / seqs_style.norm(dim=-1, keepdim=True), dim=-1)[0]
+        k_ratio = 0.25
+        k_val = int(sim_add.shape[0] * k_ratio)
+        
+        if k_val > 0:
+            # Find the threshold value for the top K
+            threshold = torch.topk(sim_add.flatten(), k_val).values[-1]
+            print(threshold)
+            
+            sim_mask = (sim_add >= threshold).float()
+        else:
+            # Fallback for very short sequences
+            sim_mask = (sim_add > 0.1).float()
+
+        seqs_style = seqs_style * sim_mask.unsqueeze(1).to(seqs_style.dtype)
+
+    if normed:
+        if pooled:
+            pooled_style = pooled_style / pooled_style.norm(dim=-1, keepdim=True)
+        seqs_style = seqs_style / seqs_style.norm(dim=-1, keepdim=True)
+    
+    seqs_style = seqs_style * strenght
+    
+    if pooled:
+        pooled_style = pooled_style * strenght
+    else:
+        pooled_style = pooled_style * 0.
+
+    return -pooled_style, -seqs_style
+
 def load_steering_data(
     svm_model_path: Optional[str], 
     scores_path: Optional[str], 
     token_best_path: Optional[str], 
     quantile_level: float
 ) -> Tuple[Optional[Dict], Optional[torch.Tensor], Optional[torch.Tensor], Optional[np.ndarray]]:
-    """Loads SVM models, best tokens, and scores."""
+    """Loads SVM models, best tokens, and scores using original logic."""
     
     models = None
     if svm_model_path and os.path.exists(svm_model_path):
         with torch.serialization.safe_globals([sklearn.svm._classes.SVC]): 
-            # Note: weights_only=False must be used for loading custom objects like SVMs
             models = torch.load(svm_model_path, weights_only=False) 
 
     tokens_best = None
@@ -209,19 +267,18 @@ def load_steering_data(
      
     scores_all = None
     if scores_path and os.path.exists(scores_path):
-        # Scores are typically NumPy arrays, load them and convert to torch/numpy for quantile
-        scores_all = torch.from_numpy(torch.load(scores_path, weights_only=False))
+        # Handle both tensor and numpy loads safely
+        data = torch.load(scores_path, weights_only=False)
+        scores_all = data if torch.is_tensor(data) else torch.from_numpy(data)
 
     quantiles = None
-    if scores_all is not None:
+    if scores_all is not None and scores_path:
         scores_np = scores_all.numpy()
-        if 'block' in scores_path: # Infer from filename or use a separate argument
-            # Quantiles calculated over tokens, resulting in (Timestep x Layer)
+        if 'block' in scores_path:
             quantiles = np.quantile(scores_np, q=quantile_level, axis=2) 
         elif 'timestep' in scores_path:
-            # Quantiles calculated over layers and tokens, resulting in (Timestep)
             quantiles = np.quantile(scores_np, q=quantile_level, axis=(1, 2)) 
-        else: # Overall quantile
+        else:
             quantiles = np.quantile(scores_np, q=quantile_level)
     
     return models, tokens_best, scores_all, quantiles

@@ -138,8 +138,19 @@ if __name__ == '__main__':
     # Save filenames
     embeds_pos_filename = f"{args.task}_{args.pos_concept}_{args.pos_concept}_prompts_{args.num_prompts}_pos_embeddings.pt"
     embeds_neg_filename = f"{args.task}_{args.neg_concept}_{args.pos_concept}_prompts_{args.num_prompts}_neg_embeddings.pt"
+    # embeds_pos_filename = f"{args.task}_{args.neg_concept}_prompts_{args.num_prompts}_pos_embeddings.pt"
+    # embeds_neg_filename = f"{args.task}_{args.neg_concept}_prompts_{args.num_prompts}_neg_embeddings.pt"
+
     torch.save(pos_embeds, os.path.join(args.save_dir, embeds_pos_filename))
     torch.save(neg_embeds, os.path.join(args.save_dir, embeds_neg_filename))
 
     print(f"\nSaved positive text embeddings to: {os.path.join(args.save_dir, embeds_pos_filename)}")
     print(f"Saved negative text embeddings to: {os.path.join(args.save_dir, embeds_neg_filename)}")
+    # prefix = f"{args.task}_{args.pos_concept}_vs_{args.neg_concept or 'none'}"
+    
+    # torch.save(results["steering_vector"], os.path.join(args.save_dir, f"{prefix}_steering_vec.pt"))
+    # # Optionally save full data for analysis
+    # # torch.save(results["pos_metadata"], os.path.join(args.save_dir, f"{prefix}_pos_full.pt"))
+    
+    # print(f"\n✅ Steering Vector calculated and saved to {args.save_dir}")
+    # print(f"Sequence Shape: {results['steering_vector']['sequence'].shape}")

@@ -10,3 +10,8 @@ get_vector_clean.py
 __pycache__/
 test.ipynb
 plots.ipynb
+
+experiments/
+results_debug/
+eval_output/
+test/

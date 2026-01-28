@@ -42,7 +42,7 @@ def main():
     # Prepare output directories
     os.makedirs(args.save_dir, exist_ok=True)
     if args.visualize:
-        vis_dir = os.path.join(args.save_dir, "visualized")
+        vis_dir = os.path.join(args.save_dir, f"visualized_{args.dino_threshold}")
         os.makedirs(vis_dir, exist_ok=True)
 
     # 1. Load Model and Processor
@@ -63,8 +63,12 @@ def main():
     text_prompt = args.target_prompt if args.target_prompt.endswith(".") else f"{args.target_prompt}."
 
     print(f"Running Detection. Target: {text_prompt} | Visualize: {args.visualize}")
-
+    i = 0
     for filename in tqdm(image_files):
+        if i >= 25:
+            break
+
+        i += 1
         img_path = os.path.join(args.image_dir, filename)
         image_pil = Image.open(img_path).convert("RGB")
         
@@ -115,7 +119,7 @@ def main():
                 image_pil.save(os.path.join(vis_dir, filename))
 
     # 5. Save Final JSON
-    with open(os.path.join(args.save_dir, "detections.json"), 'w') as f:
+    with open(os.path.join(args.save_dir, f"detections_{args.dino_threshold}.json"), 'w') as f:
         json.dump(results_dict, f, indent=4)
 
     # 6. Calculate Metrics (Detection Rate)
@@ -126,7 +130,7 @@ def main():
     print(f"Total Images:   {len(image_files)}")
     print(f"Detection Rate: {det_rate:.2%}")
     
-    with open(os.path.join(args.save_dir, "metrics.json"), 'w') as f:
+    with open(os.path.join(args.save_dir, f"metrics_{args.dino_threshold}.json"), 'w') as f:
         json.dump({"detection_rate": det_rate}, f, indent=4)
 
 if __name__ == "__main__":

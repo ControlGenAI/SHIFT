@@ -148,7 +148,6 @@ def calculate_cls_score(
     if not use_distance:
         score_cls = model.predict_proba(a) if model is not None else np.array([[0.5, 0.5]])
         if task == 'add concept':
-            assert False
             scoreeee =  min(cls_min, (1 / ((1 - score_cls[0][0]) + 1e-8) - 1)) # 21 * score_cls[0][1]**2
         else:
             #assert False
@@ -193,12 +192,14 @@ def calculate_cls_score(
 
 
 def apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_style, normed=True):
+    #normed = True
     if not normed:
         new_pooled_embeds = pooled_prompt_embeds + pooled_style
         new_prompt_embeds = prompt_embeds + seqs_style
     else:
-        init_pooled_norm = pooled_prompt_embeds.norm(dim=-1, keepdim=True)
-        init_prompt_norm = prompt_embeds.norm(dim=-1, keepdim=True)
+        
+        init_pooled_norm = pooled_prompt_embeds.clone().norm(dim=-1, keepdim=True)
+        init_prompt_norm = prompt_embeds.clone().norm(dim=-1, keepdim=True)
 
         new_pooled_embeds = (pooled_prompt_embeds +  pooled_style)
         new_pooled_embeds = new_pooled_embeds / new_pooled_embeds.norm(dim=-1, keepdim=True) * init_pooled_norm
@@ -213,13 +214,16 @@ def apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_s
 def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=False, ssim=False, pooled=True, normed=True):
     seqs_style = vector_txt['sequence'].to(prompt_embeds.dtype).to(prompt_embeds.device).mean(0, keepdim=True) 
     pooled_style = vector_txt['pooled'].to(prompt_embeds.dtype).to(prompt_embeds.device).mean(0, keepdim=True) 
-
+    #normed = True
+    mean = True
+    
     if mean:
         seqs_style = seqs_style.mean(1, keepdim=True) 
-
+    
+    ssim = False
     if ssim:
-        sim_add = -F.cosine_similarity(prompt_embeds.clone() / prompt_embeds.norm(dim=-1, keepdim=True), seqs_style.clone() / seqs_style.norm(dim=-1, keepdim=True), dim=-1)[0]
-        k_ratio = 0.25
+        sim_add = F.cosine_similarity(prompt_embeds.clone() / prompt_embeds.norm(dim=-1, keepdim=True), seqs_style.clone() / seqs_style.norm(dim=-1, keepdim=True), dim=-1)[0]
+        k_ratio = 0.05
         k_val = int(sim_add.shape[0] * k_ratio)
         
         if k_val > 0:
@@ -246,7 +250,7 @@ def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=False, ssim=Fals
     else:
         pooled_style = pooled_style * 0.
 
-    return -pooled_style, -seqs_style
+    return -pooled_style, -torch.zeros_like(seqs_style).to(pooled_style.device).to(pooled_style.dtype)
 
 def load_steering_data(
     svm_model_path: Optional[str], 

@@ -65,7 +65,7 @@ def compute_clip_score(image: Image.Image, text_prompt: str) -> float:
 
 # --- Main Logic ---
 
-def compute_clip_reward_metrics(origin_dir, target_dirs, image_prompts, style_prompt, save_dir):
+def compute_clip_reward_metrics(origin_dir, target_dirs, image_prompts, style_prompt, save_dir, target_prompts=None, task='style'):
     """
     Computes CLIP Image Similarity, CLIP Score (vs. style prompt), and Image Reward.
     """
@@ -86,6 +86,18 @@ def compute_clip_reward_metrics(origin_dir, target_dirs, image_prompts, style_pr
             # Only add non-empty lines to the list
             if prompt:
                 prompts.append(prompt)
+
+    if target_prompts is not None:
+        target_prompt_all = []
+        with open(target_prompts[0], 'r', encoding='utf-8') as f:
+            for line in f:
+                # Use .strip() to remove leading/trailing whitespace, 
+                # including the newline character '\n'
+                target_prompt = line.strip()
+                
+                # Only add non-empty lines to the list
+                if target_prompt:
+                    target_prompt_all.append(target_prompt)
 
     # Use os.listdir and sorted to get a list of image files in a consistent order
     try:
@@ -113,15 +125,29 @@ def compute_clip_reward_metrics(origin_dir, target_dirs, image_prompts, style_pr
         dir_name = os.path.basename(os.path.normpath(target_dir_path))
         print(f"\nCalculating CLIP/Reward metrics for target directory: {target_dir_path}")
 
-        clip_img_sims, clip_scores, reward_scores, reward_scores_origin, clip_scores_origin  = [], [], [], [], []
-        
+        clip_img_sims = []
+        clip_init_origin = []
+        clip_init_target = []
+
+        clip_concept_origin = []
+        clip_concept_target = []
+
+        clip_all_origin = []
+        clip_all_target = []
+
+
         all_target_files = os.listdir(target_dir_path) #{f: f.rsplit('.', 1)[0] for f in os.listdir(target_dir_path) if os.path.isfile(os.path.join(origin_dir, f))}
         #print(all_target_files)
-        # Filter files to only those that match the base prompts and sort them
         names_origin = []
         names_target = []
+
+        prompts_origin = []
+        prompts_target = []
+        
         file_list_target = natsort.natsorted(all_target_files)
         for i, fname in tqdm(enumerate(file_list), desc=f"Processing {dir_name}"):
+            if i >= 25:
+                break
             # Get the base prompt name (e.g., 'prompt_0' from 'prompt_0.png')
             prompt_base_name = fname.rsplit('.', 1)[0]
             prompt_name = prompts[i]
@@ -131,9 +157,6 @@ def compute_clip_reward_metrics(origin_dir, target_dirs, image_prompts, style_pr
             
             target_img_path = os.path.join(target_dir_path, file_list_target[i])
             
-            # print(target_img_path)
-            # print(origin_img_path)
-            # print("-" * 10)
             # Check if both files exist (the target directory must contain the same files)
             
             origin_img = Image.open(origin_img_path).convert("RGB")
@@ -146,33 +169,60 @@ def compute_clip_reward_metrics(origin_dir, target_dirs, image_prompts, style_pr
             origin_clip_feat = get_clip_image_embedding(origin_img)
             target_clip_feat = get_clip_image_embedding(target_img)
             
-            # Compute Metrics
+           
             clip_img_sim = compute_clip_image_score(origin_clip_feat, target_clip_feat)
             if clip_img_sim is not None: clip_img_sims.append(clip_img_sim)
             
             # Use the style prompt for the CLIP Score (Style Alignment)
             clip_score = compute_clip_score(target_img, style_prompt) 
-            if clip_score is not None: clip_scores.append(clip_score)
+            if clip_score is not None: clip_concept_target.append(clip_score)
             
             # Use the image's base prompt for the Image Reward model (Content Alignment/Quality)
             reward_score = compute_clip_score(target_img, prompt_name) 
-            reward_scores.append(reward_score)
-
+            clip_init_target.append(reward_score)
 
             clip_score_origin = compute_clip_score(origin_img, style_prompt) 
-            if clip_score is not None: clip_scores_origin.append(clip_score_origin)
+            if clip_score is not None: clip_concept_origin.append(clip_score_origin)
             
             # Use the image's base prompt for the Image Reward model (Content Alignment/Quality)
             reward_score_origin = compute_clip_score(origin_img, prompt_name) 
-            reward_scores_origin.append(reward_score_origin)
+            clip_init_origin.append(reward_score_origin)
+
+            #
+             # Compute Metrics
+            if task == 'style':
+                target_prompt = f'{prompt_name}, {style_prompt} style'
+            elif task == 'add':
+                target_prompt = f'{prompt_name}, with {style_prompt}'
+            else:
+                target_prompt = target_prompt_all[i]
+            
+
+            # Use the image's base prompt for the Image Reward model (Content Alignment/Quality)
+            reward_score_origin = compute_clip_score(origin_img, target_prompt) 
+            clip_all_origin.append(reward_score_origin)
+            
+            reward_score_target = compute_clip_score(target_img, target_prompt) 
+            clip_all_target.append(reward_score_target)
+
+            print(target_prompt, reward_score_origin, reward_score_target)
+            print('==============')
+
+            prompts_origin.append(prompt_name)
+            prompts_target.append(target_prompt)
     
     # 1. Calculate Mean Metrics
     summary_metrics = {
         "mean_clip_img_sim": float(np.mean(clip_img_sims)) if clip_img_sims else None,
-        "mean_clip_score": float(np.mean(clip_scores)) if clip_scores else None,
-        "mean_reward_score": float(np.mean(reward_scores)) if reward_scores else None,
-        "mean_reward_score_origin": float(np.mean(reward_scores_origin)) if reward_scores_origin else None,
-        "mean_clip_score_origin": float(np.mean(clip_scores_origin)) if clip_scores_origin else None
+        
+        "clip_score_concept_target": float(np.mean(clip_concept_target)) if clip_concept_target else None,
+        "clip_score_concept_origin": float(np.mean(clip_concept_origin)) if clip_concept_origin else None,
+
+        "clip_score_all_target": float(np.mean(clip_all_target)) if clip_all_target else None,
+        "clip_score_all_origin": float(np.mean(clip_all_origin)) if clip_all_origin else None,
+
+        "clip_score_prompt_target": float(np.mean(clip_init_target)) if clip_init_target else None,
+        "clip_score_prompt_origin": float(np.mean(clip_init_origin)) if clip_init_origin else None,
     }
 
     # 2. Create Per-Image Dictionary ("idx: metrics")
@@ -181,12 +231,16 @@ def compute_clip_reward_metrics(origin_dir, target_dirs, image_prompts, style_pr
         # Using string 'i' because JSON keys must be strings
         per_image_metrics[str(i)] = {
             "clip_img_sim": clip_img_sims[i],
-            "clip_score": clip_scores[i],
-            "reward_score": reward_scores[i],
-            "reward_score_origin": reward_scores_origin[i],
-            "clip_score_origin": clip_scores_origin[i],
+            "clip_score_concept_target": clip_concept_target[i],
+            "clip_score_concept_origin": clip_concept_origin[i],
+            "clip_score_all_target": clip_all_target[i],
+            "clip_score_all_origin": clip_all_origin[i],
+            "clip_score_prompt_target": clip_init_target[i],
+            "clip_score_prompt_origin": clip_init_origin[i],
             "name_origin": names_origin[i],
-            "name_target": names_target[i]
+            "name_target": names_target[i],
+            "prompt": prompts_origin[i],
+            "target_prompt": prompts_target[i],
         }
 
     # 3. Save to Files
@@ -196,12 +250,12 @@ def compute_clip_reward_metrics(origin_dir, target_dirs, image_prompts, style_pr
     # Save Summary
     print(summary_metrics)
     print("-" * 10)
-    summary_path = os.path.join(args.save_dir, "summary_metrics.json")
+    summary_path = os.path.join(args.save_dir, "summary_metrics_part.json")
     with open(summary_path, 'w') as f:
         json.dump(summary_metrics, f, indent=4)
 
     # Save Per-Image
-    detailed_path = os.path.join(args.save_dir, "per_image_metrics.json")
+    detailed_path = os.path.join(args.save_dir, "per_image_metrics_part.json")
     with open(detailed_path, 'w') as f:
         json.dump(per_image_metrics, f, indent=4)
 
@@ -229,12 +283,14 @@ if __name__ == '__main__':
     parser.add_argument('--origin_dir', type=str, required=True, help="Path to the directory containing source/origin images.")
     parser.add_argument('--target_dirs', nargs='+', required=True, help="List of paths to directories containing target/stylized images.")
     parser.add_argument('--image_prompts', nargs='+', required=True, help="List of base image prompt names (e.g., 'prompt_0', 'prompt_1').")
+    parser.add_argument('--target_prompts', nargs='+', default=None, help="List of base image prompt names (e.g., 'prompt_0', 'prompt_1').")
     parser.add_argument('--style_prompt', type=str, required=True, help="The text prompt describing the target style (e.g., 'A watercolor painting').")
     parser.add_argument('--save_dir', type=str, default='.', help="Directory to save the resulting .pt file.")
+    parser.add_argument('--task', type=str, default='style', help="Directory to save the resulting .pt file.")
     
     args = parser.parse_args()
 
     if clip_model:
-        compute_clip_reward_metrics(args.origin_dir, args.target_dirs, args.image_prompts, args.style_prompt, args.save_dir)
+        compute_clip_reward_metrics(args.origin_dir, args.target_dirs, args.image_prompts, args.style_prompt, args.save_dir, target_prompts=args.target_prompts, task=args.task)
     else:
         print("CLIP model not loaded. Skipping metric computation.")

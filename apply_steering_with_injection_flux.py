@@ -75,7 +75,7 @@ class SteeringEngine:
             
             # Use similarity weight only for removal tasks
             weight = sim.unsqueeze(-1)
-            return mask, weight
+            return mask, weight.clip(0,2)
         
         dtype = activations.dtype
         act_f32 = activations.float()
@@ -119,7 +119,7 @@ class SteeringEngine:
         else:
             # Masked addition targets concept-relevant tokens
             if args.vector_type == 'diff' or args.steering_type == 'mean':
-                adjustment = args.strength * v_steer.to(activations.dtype) * mask * score_val  
+                adjustment = args.strength * v_steer.to(activations.dtype) * score_val  
             else:
                 score_val = score_val.unsqueeze(1)
                 adjustment = args.strength * v_steer.to(activations.dtype).unsqueeze(1) * mask * score_val.unsqueeze(1)
@@ -134,7 +134,7 @@ class SteeringEngine:
 # 3. Hook and Injection Logic
 # ==============================================================================
 MODEL_CONFIGS = {
-    "flux": {"last_layer": 56, "out_idx": 1, "inner_idx": 0, "dtype": torch.bfloat16},
+    "flux": {"last_layer": 66, "out_idx": 1, "inner_idx": 0, "dtype": torch.bfloat16},
     "sd3": {"last_layer": 23, "out_idx": 1, "inner_idx": 1, "dtype": torch.float16}
 }
 
@@ -306,7 +306,7 @@ if __name__ == "__main__":
     # Load Vectors
     vector = torch.load(os.path.join(args.data_dir, f'base_0.85_20_{args.vector_type}.pt'))
     if args.steer_txt:
-        vector_txt =torch.load(os.path.join(args.data_dir, f'base_0.85_20_text_diff.pt'))
+        vector_txt = torch.load(os.path.join(args.data_dir, f'base_0.85_20_text_diff.pt'))
         # if args.task == 'remove':
         #     vector_txt['sequence'] = -vector_txt['sequence']
         #     vector_txt['pooled'] = -vector_txt['pooled']
@@ -322,7 +322,7 @@ if __name__ == "__main__":
     # Main Loop
     for idx, prompt in enumerate(coco_prompts):
         if args.task == 'remove':
-            prompt += args.remove_prompt
+            prompt = prompt + args.remove_prompt
         print(f"Processing {idx+1}/{len(coco_prompts)}: {prompt}", args.inference_steps, args.guidance_scale)
         
         hook_state, remove_hooks = apply_attention_steering(pipe, args, vector)

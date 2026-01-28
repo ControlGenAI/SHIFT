@@ -424,7 +424,7 @@
 
 
 
-# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+# CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
 #     --model_name "black-forest-labs/FLUX.1-schnell" \
 #     --data_dir "experiments/flux_schnell/style/final_steering/anime" \
 #     --task "add concept" \
@@ -443,7 +443,7 @@
 #     --use_cls \
 #     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
-# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+# CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
 #     --model_name "black-forest-labs/FLUX.1-schnell" \
 #     --data_dir "experiments/flux_schnell/style/final_steering/anime" \
 #     --task "add concept" \
@@ -463,7 +463,7 @@
 #     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
 
-# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+# CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
 #     --model_name "black-forest-labs/FLUX.1-schnell" \
 #     --data_dir "experiments/flux_schnell/style/final_steering/anime" \
 #     --task "add concept" \
@@ -482,7 +482,7 @@
 #     --use_cls \
 #     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
-# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+# CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
 #     --model_name "black-forest-labs/FLUX.1-schnell" \
 #     --data_dir "experiments/flux_schnell/style/final_steering/anime" \
 #     --task "add concept" \
@@ -502,7 +502,7 @@
 #     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
 
-# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+# CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
 #     --model_name "black-forest-labs/FLUX.1-schnell" \
 #     --data_dir "experiments/flux_schnell/style/final_steering/anime" \
 #     --task "add concept" \
@@ -521,7 +521,7 @@
 #     --use_cls \
 #     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
-# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+# CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
 #     --model_name "black-forest-labs/FLUX.1-schnell" \
 #     --data_dir "experiments/flux_schnell/style/final_steering/anime" \
 #     --task "add concept" \
@@ -966,89 +966,89 @@
 
 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/impressionism" \
-    --task "add concept" \
-    --strength 1000.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/impressionism/1000_15_diff_s_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'separate' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/impressionism" \
+#     --task "add concept" \
+#     --strength 1000.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/impressionism/1000_15_diff_s_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/impressionism" \
-    --task "add concept" \
-    --strength 300.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/impressionism/300_15_diff_s_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'separate' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
-
-
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/impressionism" \
-    --task "add concept" \
-    --strength 1000.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/impressionism/1000_15_diff_m_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'mean' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
-
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/impressionism" \
-    --task "add concept" \
-    --strength 300.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/impressionism/300_15_diff_m_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'mean' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/impressionism" \
+#     --task "add concept" \
+#     --strength 300.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/impressionism/300_15_diff_s_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
 
-# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+# CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/impressionism" \
+#     --task "add concept" \
+#     --strength 1000.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/impressionism/1000_15_diff_m_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'mean' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+
+# CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/impressionism" \
+#     --task "add concept" \
+#     --strength 300.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/impressionism/300_15_diff_m_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'mean' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+
+
+# CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
 #     --model_name "black-forest-labs/FLUX.1-schnell" \
 #     --data_dir "experiments/flux_schnell/style/final_steering/impressionism" \
 #     --task "add concept" \
@@ -1090,86 +1090,86 @@ CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
 ### anime
 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/anime" \
-    --task "add concept" \
-    --strength 1000.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/anime/1000_15_diff_s_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'separate' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/anime" \
+#     --task "add concept" \
+#     --strength 1000.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/anime/1000_15_diff_s_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/anime" \
-    --task "add concept" \
-    --strength 300.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/anime/300_15_diff_s_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'separate' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/anime" \
+#     --task "add concept" \
+#     --strength 300.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/anime/300_15_diff_s_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/anime" \
-    --task "add concept" \
-    --strength 1000.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/anime/1000_15_diff_m_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'mean' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/anime" \
+#     --task "add concept" \
+#     --strength 1000.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/anime/1000_15_diff_m_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'mean' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/anime" \
-    --task "add concept" \
-    --strength 300.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/anime/300_15_diff_m_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'mean' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/anime" \
+#     --task "add concept" \
+#     --strength 300.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/anime/300_15_diff_m_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'mean' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
 
 # CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
@@ -1213,86 +1213,86 @@ CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
 ### cyberpunk
 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/cyberpunk" \
-    --task "add concept" \
-    --strength 1000.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/cyberpunk/1000_15_diff_s_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'separate' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/cyberpunk" \
+#     --task "add concept" \
+#     --strength 1000.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/cyberpunk/1000_15_diff_s_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/cyberpunk" \
-    --task "add concept" \
-    --strength 300.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/cyberpunk/300_15_diff_s_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'separate' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/cyberpunk" \
+#     --task "add concept" \
+#     --strength 300.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/cyberpunk/300_15_diff_s_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/cyberpunk" \
-    --task "add concept" \
-    --strength 1000.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/cyberpunk/1000_15_diff_m_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'mean' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/cyberpunk" \
+#     --task "add concept" \
+#     --strength 1000.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/cyberpunk/1000_15_diff_m_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'mean' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/cyberpunk" \
-    --task "add concept" \
-    --strength 300.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/cyberpunk/300_15_diff_m_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'mean' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/cyberpunk" \
+#     --task "add concept" \
+#     --strength 300.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/cyberpunk/300_15_diff_m_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'mean' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
 
 # CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
@@ -1336,86 +1336,86 @@ CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
 ### sketch
 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
-    --task "add concept" \
-    --strength 1000.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/sketch/1000_15_diff_s_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'separate' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
+#     --task "add concept" \
+#     --strength 1000.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/sketch/1000_15_diff_s_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
-    --task "add concept" \
-    --strength 300.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/sketch/300_15_diff_s_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'separate' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
+#     --task "add concept" \
+#     --strength 300.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/sketch/300_15_diff_s_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
-    --task "add concept" \
-    --strength 1000.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/sketch/1000_15_diff_m_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'mean' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
+#     --task "add concept" \
+#     --strength 1000.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/sketch/1000_15_diff_m_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'mean' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
-CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
-    --task "add concept" \
-    --strength 300.0 \
-    --strength_txt 1.5 \
-    --top_k_percent 0.01 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/style/generated_images/sketch/300_15_diff_m_ssim" \
-    --inference_steps 4 \
-    --seed 42 \
-    --steer_txt \
-    --vector_type 'diff' \
-    --steering_type 'mean' \
-    --guidance_scale 0.0 \
-    --use_cls \
-    --use_ssim_mask \
-    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
+#     --task "add concept" \
+#     --strength 300.0 \
+#     --strength_txt 1.5 \
+#     --top_k_percent 0.01 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/style/generated_images/sketch/300_15_diff_m_ssim" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --steer_txt \
+#     --vector_type 'diff' \
+#     --steering_type 'mean' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --use_ssim_mask \
+#     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
 
 # CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
@@ -1456,3 +1456,226 @@ CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
 #     --use_cls \
 #     --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
 
+
+
+
+CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+    --model_name "black-forest-labs/FLUX.1-schnell" \
+    --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
+    --task "add concept" \
+    --strength 300.0 \
+    --strength_txt 1.0 \
+    --top_k_percent 0.01 \
+    --min_signal_threshold 0.05 \
+    --cls_min 20.0 \
+    --results_dir "experiments/flux_schnell/style/generated_images/sketch/300_1_mean_diff_s_only_pooled" \
+    --inference_steps 4 \
+    --seed 42 \
+    --steer_txt \
+    --vector_type 'diff' \
+    --steering_type 'separate' \
+    --guidance_scale 0.0 \
+    --use_cls \
+    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+
+
+
+CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+    --model_name "black-forest-labs/FLUX.1-schnell" \
+    --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
+    --task "add concept" \
+    --strength 300.0 \
+    --strength_txt 1.0 \
+    --top_k_percent 0.01 \
+    --min_signal_threshold 0.05 \
+    --cls_min 20.0 \
+    --results_dir "experiments/flux_schnell/style/generated_images/sketch/300_1_mean_diff_s_only_pooled_0_9" \
+    --inference_steps 4 \
+    --seed 42 \
+    --steer_txt \
+    --vector_type 'diff' \
+    --steering_type 'separate' \
+    --guidance_scale 0.0 \
+    --use_cls \
+    --block_steering "0,1,2,3,4,5,6,7,8,9" \
+    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+
+
+
+
+CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+    --model_name "black-forest-labs/FLUX.1-schnell" \
+    --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
+    --task "add concept" \
+    --strength 300.0 \
+    --strength_txt 1.0 \
+    --top_k_percent 0.01 \
+    --min_signal_threshold 0.05 \
+    --cls_min 20.0 \
+    --results_dir "experiments/flux_schnell/style/generated_images/sketch/300_1_mean_diff_s_only_pooled_0_12" \
+    --inference_steps 4 \
+    --seed 42 \
+    --steer_txt \
+    --vector_type 'diff' \
+    --steering_type 'separate' \
+    --guidance_scale 0.0 \
+    --use_cls \
+    --block_steering "0,1,2,3,4,5,6,7,8,9,10,11,12" \
+    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+
+
+
+CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+    --model_name "black-forest-labs/FLUX.1-schnell" \
+    --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
+    --task "add concept" \
+    --strength 300.0 \
+    --strength_txt 1.0 \
+    --top_k_percent 0.01 \
+    --min_signal_threshold 0.05 \
+    --cls_min 20.0 \
+    --results_dir "experiments/flux_schnell/style/generated_images/sketch/300_1_mean_diff_s_only_pooled_0_7" \
+    --inference_steps 4 \
+    --seed 42 \
+    --steer_txt \
+    --vector_type 'diff' \
+    --steering_type 'separate' \
+    --guidance_scale 0.0 \
+    --use_cls \
+    --block_steering "0,1,2,3,4,5,6,7" \
+    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+
+
+#################################
+
+
+
+CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+    --model_name "black-forest-labs/FLUX.1-schnell" \
+    --data_dir "experiments/flux_schnell/style/final_steering/anime" \
+    --task "add concept" \
+    --strength 300.0 \
+    --strength_txt 1.0 \
+    --top_k_percent 0.01 \
+    --min_signal_threshold 0.05 \
+    --cls_min 20.0 \
+    --results_dir "experiments/flux_schnell/style/generated_images/anime/300_1_mean_diff_s_only_pooled" \
+    --inference_steps 4 \
+    --seed 42 \
+    --steer_txt \
+    --vector_type 'diff' \
+    --steering_type 'separate' \
+    --guidance_scale 0.0 \
+    --use_cls \
+    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+
+
+
+CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+    --model_name "black-forest-labs/FLUX.1-schnell" \
+    --data_dir "experiments/flux_schnell/style/final_steering/anime" \
+    --task "add concept" \
+    --strength 300.0 \
+    --strength_txt 1.0 \
+    --top_k_percent 0.01 \
+    --min_signal_threshold 0.05 \
+    --cls_min 20.0 \
+    --results_dir "experiments/flux_schnell/style/generated_images/anime/300_1_mean_diff_s_only_pooled_0_9" \
+    --inference_steps 4 \
+    --seed 42 \
+    --steer_txt \
+    --vector_type 'diff' \
+    --steering_type 'separate' \
+    --guidance_scale 0.0 \
+    --use_cls \
+    --block_steering "0,1,2,3,4,5,6,7,8,9" \
+    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+
+
+
+
+CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+    --model_name "black-forest-labs/FLUX.1-schnell" \
+    --data_dir "experiments/flux_schnell/style/final_steering/anime" \
+    --task "add concept" \
+    --strength 300.0 \
+    --strength_txt 1.0 \
+    --top_k_percent 0.01 \
+    --min_signal_threshold 0.05 \
+    --cls_min 20.0 \
+    --results_dir "experiments/flux_schnell/style/generated_images/anime/300_1_mean_diff_s_only_pooled_0_12" \
+    --inference_steps 4 \
+    --seed 42 \
+    --steer_txt \
+    --vector_type 'diff' \
+    --steering_type 'separate' \
+    --guidance_scale 0.0 \
+    --use_cls \
+    --block_steering "0,1,2,3,4,5,6,7,8,9,10,11,12" \
+    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+
+
+
+CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+    --model_name "black-forest-labs/FLUX.1-schnell" \
+    --data_dir "experiments/flux_schnell/style/final_steering/anime" \
+    --task "add concept" \
+    --strength 300.0 \
+    --strength_txt 1.0 \
+    --top_k_percent 0.01 \
+    --min_signal_threshold 0.05 \
+    --cls_min 20.0 \
+    --results_dir "experiments/flux_schnell/style/generated_images/anime/300_1_mean_diff_s_only_pooled_0_7" \
+    --inference_steps 4 \
+    --seed 42 \
+    --steer_txt \
+    --vector_type 'diff' \
+    --steering_type 'separate' \
+    --guidance_scale 0.0 \
+    --use_cls \
+    --block_steering "0,1,2,3,4,5,6,7" \
+    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+
+###########
+
+
+CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+    --model_name "black-forest-labs/FLUX.1-schnell" \
+    --data_dir "experiments/flux_schnell/style/final_steering/anime" \
+    --task "add concept" \
+    --strength 300.0 \
+    --strength_txt 1.5 \
+    --top_k_percent 0.01 \
+    --min_signal_threshold 0.05 \
+    --cls_min 20.0 \
+    --results_dir "experiments/flux_schnell/style/generated_images/anime/300_15_mean_diff_s_only_pooled" \
+    --inference_steps 4 \
+    --seed 42 \
+    --steer_txt \
+    --vector_type 'diff' \
+    --steering_type 'separate' \
+    --guidance_scale 0.0 \
+    --use_cls \
+    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 
+
+
+
+
+CUDA_VISIBLE_DEVICES=1,0, python apply_steering_with_injection_flux.py \
+    --model_name "black-forest-labs/FLUX.1-schnell" \
+    --data_dir "experiments/flux_schnell/style/final_steering/sketch" \
+    --task "add concept" \
+    --strength 300.0 \
+    --strength_txt 1.5 \
+    --top_k_percent 0.01 \
+    --min_signal_threshold 0.05 \
+    --cls_min 20.0 \
+    --results_dir "experiments/flux_schnell/style/generated_images/sketch/300_15_mean_diff_s_only_pooled" \
+    --inference_steps 4 \
+    --seed 42 \
+    --steer_txt \
+    --vector_type 'diff' \
+    --steering_type 'separate' \
+    --guidance_scale 0.0 \
+    --use_cls \
+    --prompts_path "data/coco_captions_2017/coco_val2017_subset_250_seed42.txt" 

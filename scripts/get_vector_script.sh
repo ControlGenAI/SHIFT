@@ -696,3 +696,42 @@
 #         --batch_size 1
 
 # echo "Done. Results saved in $CURRENT_SAVE_DIR"
+
+
+############ remove concept ####################
+
+
+NUM_PROMPTS=20
+POS_CONCEPT_PROMPT='Snoopy'
+POS_CONCEPT_KEY="Snoopy"  # Used for folder naming
+NEG_CONCEPT_PROMPT=''
+
+SAVE_IMAGE_DIR="experiments/flux_schnell/remove/generated_images"
+SAVE_BASE_DIR="experiments/flux_schnell/remove/data_vectors"
+SAVE_TXT_BASE_DIR="test/data_vectors_txt"
+PYTHON_SCRIPT="get_vector.py" 
+
+# Create the specific save directory for this concept pair
+CURRENT_SAVE_DIR="${SAVE_BASE_DIR}/"
+mkdir -p "$CURRENT_SAVE_DIR"
+mkdir -p "$SAVE_IMAGE_DIR"
+
+echo "Starting extraction for: $POS_CONCEPT_KEY"
+
+# # --- Execution ---
+CUDA_VISIBLE_DIVECES=1,2,3, python "$PYTHON_SCRIPT" \
+        --task "concrete" \
+        --num_prompts "$NUM_PROMPTS" \
+        --pos_concept "$POS_CONCEPT_PROMPT" \
+        --neg_concept "$NEG_CONCEPT_PROMPT" \
+        --save_dir "$CURRENT_SAVE_DIR" \
+        --save_image_dir "$SAVE_IMAGE_DIR" \
+        --exp_type "$POS_CONCEPT_KEY" \
+        --model_name "black-forest-labs/FLUX.1-schnell" \
+        --gs 0.0 \
+        --num_inference_steps 4 \
+        --batch_size 1 \
+        --prompt_path prompts_collection/dataset_creation/dataset_prompts_remove.txt
+
+
+echo "Done. Results saved in $CURRENT_SAVE_DIR"

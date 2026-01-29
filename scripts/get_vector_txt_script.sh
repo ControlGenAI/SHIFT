@@ -169,10 +169,10 @@
 python get_encoding_vector.py \
                     --pos_concept "Snoopy" \
                     --neg_concept "" \
-                    --num_prompts 20 \
+                    --num_prompts 35 \
                     --task 'concrete' \
                     --model_name "black-forest-labs/FLUX.1-schnell" \
                     --save_dir "experiments/flux_schnell/remove/data_vectors_txt" \
-                    --prompts_file "prompts_collection/dataset_creation/dataset_prompts_remove.txt" \
+                    --prompts_file "prompts_collection/dataset_creation/dataset_prompts_remove_3.txt" \
 
 

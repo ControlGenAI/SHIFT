@@ -109,10 +109,10 @@ class SteeringEngine:
         # 3. Task Logic
         if args.task == 'remove':
             if args.vector_type == 'diff' or args.steering_type == 'mean':
-                adjustment = args.strength * weight * v_steer.to(activations.dtype) * mask * score_val
+                adjustment = args.strength * weight * v_steer.to(activations.dtype)  * score_val
             else:
                 score_val = score_val.unsqueeze(1)
-                adjustment = args.strength * weight * v_steer.to(activations.dtype) * mask * score_val
+                adjustment = args.strength * weight * v_steer.to(activations.dtype)  * score_val
                 adjustment = adjustment.mean(0)
             steered = activations - (adjustment)
             print(score_val)
@@ -222,6 +222,8 @@ def apply_attention_steering(pipe, args, vector):
                         score_val = torch.mean(score_val, dim=0, keepdim=True)
             else:
                 score_val = torch.ones((1, 1), device=to_modify.device, dtype=to_modify.dtype)
+
+            score_val = torch.ones((1, 1), device=to_modify.device, dtype=to_modify.dtype)
 
             # Apply Vector Math
             if args.steering_type == 'mean':

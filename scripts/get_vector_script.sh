@@ -701,12 +701,12 @@
 ############ remove concept ####################
 
 
-NUM_PROMPTS=20
+NUM_PROMPTS=35
 POS_CONCEPT_PROMPT='Snoopy'
-POS_CONCEPT_KEY="Snoopy"  # Used for folder naming
+POS_CONCEPT_KEY="Snoopy_big"  # Used for folder naming
 NEG_CONCEPT_PROMPT=''
 
-SAVE_IMAGE_DIR="experiments/flux_schnell/remove/generated_images"
+SAVE_IMAGE_DIR="experiments/flux_schnell/remove/dataset_images"
 SAVE_BASE_DIR="experiments/flux_schnell/remove/data_vectors"
 SAVE_TXT_BASE_DIR="test/data_vectors_txt"
 PYTHON_SCRIPT="get_vector.py" 
@@ -719,7 +719,7 @@ mkdir -p "$SAVE_IMAGE_DIR"
 echo "Starting extraction for: $POS_CONCEPT_KEY"
 
 # # --- Execution ---
-CUDA_VISIBLE_DIVECES=1,2,3, python "$PYTHON_SCRIPT" \
+CUDA_VISIBLE_DIVECES=1,2,0, python "$PYTHON_SCRIPT" \
         --task "concrete" \
         --num_prompts "$NUM_PROMPTS" \
         --pos_concept "$POS_CONCEPT_PROMPT" \
@@ -731,7 +731,7 @@ CUDA_VISIBLE_DIVECES=1,2,3, python "$PYTHON_SCRIPT" \
         --gs 0.0 \
         --num_inference_steps 4 \
         --batch_size 1 \
-        --prompt_path prompts_collection/dataset_creation/dataset_prompts_remove.txt
+        --prompt_path prompts_collection/dataset_creation/dataset_prompts_remove_3.txt
 
 
 echo "Done. Results saved in $CURRENT_SAVE_DIR"

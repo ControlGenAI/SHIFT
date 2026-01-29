@@ -220,10 +220,10 @@ def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=False, ssim=Fals
     if mean:
         seqs_style = seqs_style.mean(1, keepdim=True) 
     
-    ssim = False
+    ssim = True
     if ssim:
         sim_add = F.cosine_similarity(prompt_embeds.clone() / prompt_embeds.norm(dim=-1, keepdim=True), seqs_style.clone() / seqs_style.norm(dim=-1, keepdim=True), dim=-1)[0]
-        k_ratio = 0.05
+        k_ratio = 0.1
         k_val = int(sim_add.shape[0] * k_ratio)
         
         if k_val > 0:
@@ -250,7 +250,7 @@ def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=False, ssim=Fals
     else:
         pooled_style = pooled_style * 0.
 
-    return -pooled_style, -torch.zeros_like(seqs_style).to(pooled_style.device).to(pooled_style.dtype)
+    return -pooled_style, -seqs_style #torch.zeros_like(seqs_style).to(pooled_style.device).to(pooled_style.dtype)
 
 def load_steering_data(
     svm_model_path: Optional[str], 

@@ -124,7 +124,8 @@
 #    --save_dir "experiments/flux_schnell/switch/final_steering/age"
 
 python calculate_steering_vectors.py \
-   --neg_path "experiments/flux_schnell/remove/data_vectors_txt/concrete__Snoopy_prompts_20_neg_embeddings.pt" \
-   --pos_path "experiments/flux_schnell/remove/data_vectors_txt/concrete_Snoopy_Snoopy_prompts_20_pos_embeddings.pt" \
+   --neg_path "experiments/flux_schnell/remove/data_vectors_txt/concrete__Snoopy_prompts_35_neg_embeddings.pt" \
+   --pos_path "experiments/flux_schnell/remove/data_vectors_txt/concrete_Snoopy_Snoopy_prompts_35_pos_embeddings.pt" \
    --method text \
-   --save_dir "experiments/flux_schnell/remove/final_steering/snoopy"
+   --n_samples 35 \
+   --save_dir "experiments/flux_schnell/remove/final_steering/snoopy_big"

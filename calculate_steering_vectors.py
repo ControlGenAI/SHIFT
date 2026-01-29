@@ -139,7 +139,7 @@ def train_ensemble_svms_best_tokens(data_pos, data_neg, best_tokens, args):
 
             models[step][layer] = models_ensemble
             
-            print(f"[{args.classifier}] Step {step}, Block {block}. Mean Score: {np.mean(scores_array[:, step, block]):.4f}")
+            print(f"[{args.classifier}] Step {step}, Block {block}. Mean Score: {np.mean(scores_array[:, step, block]):.4f}, {X_train.shape}")
             
     return models, normals, scores_array
 
@@ -175,6 +175,8 @@ def main():
 
     if args.method == 'text':
         diff = {k: data_pos[k] - data_neg[k] for k in ['sequence', 'pooled'] if k in data_pos}
+        for key in diff:
+            print(diff[key].shape)
         torch.save(diff, f"{prefix}_text_diff.pt")
         return
 

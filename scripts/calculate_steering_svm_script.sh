@@ -166,10 +166,11 @@
 
 
 python calculate_steering_vectors.py \
-   --neg_path "experiments/flux_schnell/remove/data_vectors/Snoopy__gs_0.0_prompts_20_neg_attn_enc.pt" \
-   --pos_path "experiments/flux_schnell/remove/data_vectors/Snoopy__gs_0.0_prompts_20_pos_attn_enc.pt" \
+   --neg_path "experiments/flux_schnell/remove/data_vectors/Snoopy_big__gs_0.0_prompts_35_neg_attn_enc.pt" \
+   --pos_path "experiments/flux_schnell/remove/data_vectors/Snoopy_big__gs_0.0_prompts_35_pos_attn_enc.pt" \
    --save_svm \
    --timesteps 4 \
    --blocks 19 \
+   --n_samples 35 \
    --classifier 'none' \
-   --save_dir "experiments/flux_schnell/remove/final_steering/snoopy/"
+   --save_dir "experiments/flux_schnell/remove/final_steering/snoopy_big/"

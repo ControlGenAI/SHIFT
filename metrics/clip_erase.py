@@ -12,8 +12,8 @@ from pytorch_fid import fid_score
 
 # --- Configuration ---
 ORIGIN_DIR = "experiments/flux_schnell/remove/generated_images/snoopy/0_0/steered"
-TARGET_DIR = "experiments/flux_schnell/remove/generated_images/snoopy/800_20_mean_diff_s_only_pooled_one_vec_0_7/steered"
-CONCEPTS = ["Snoopy", "Spongebob", "Mickey"]
+TARGET_DIR = "experiments/flux_schnell/remove/generated_images/snoopy/1000_18_mean_diff_s_one_vec_2_ssim_01/steered"
+CONCEPTS = ["Snoopy", "SpongeBob",  "Pikachu", "dog", "Mickey", "legislator"]
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # --- Configuration ---

@@ -926,14 +926,38 @@
 
 CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
     --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "experiments/flux_schnell/remove/final_steering/snoopy" \
+    --data_dir "experiments/flux_schnell/remove/final_steering/snoopy_2" \
     --task "remove" \
-    --strength 800.0 \
-    --strength_txt 2.0 \
-    --top_k_percent 0.5 \
+    --strength 2000.0 \
+    --strength_txt 1.8 \
+    --top_k_percent 0.95 \
     --min_signal_threshold 0.05 \
     --cls_min 20.0 \
-    --results_dir "experiments/flux_schnell/remove/generated_images/snoopy/800_20_mean_diff_s_only_pooled_one_vec_0_7" \
+    --results_dir "experiments/flux_schnell/remove/generated_images/snoopy/1000_18_mean_diff_s_one_vec_2_ssim_01_ssim_03" \
+    --inference_steps 4 \
+    --seed 42 \
+    --vector_type 'diff' \
+    --steering_type 'separate' \
+    --guidance_scale 0.0 \
+    --use_cls \
+    --steer_txt \
+    --remove_prompt " Snoopy" \
+    --use_ssim_mask \
+    --prompts_path "prompts_collection/ablation/ablation_prompts_remove.txt"
+
+
+
+
+CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+    --model_name "black-forest-labs/FLUX.1-schnell" \
+    --data_dir "experiments/flux_schnell/remove/final_steering/snoopy_2" \
+    --task "remove" \
+    --strength 2000.0 \
+    --strength_txt 1.8 \
+    --top_k_percent 0.95 \
+    --min_signal_threshold 0.05 \
+    --cls_min 20.0 \
+    --results_dir "experiments/flux_schnell/remove/generated_images/snoopy/1000_18_mean_diff_s_one_vec_2_ssim_01_ssim_03" \
     --inference_steps 4 \
     --seed 42 \
     --vector_type 'diff' \
@@ -942,6 +966,48 @@ CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
     --use_cls \
     --steer_txt \
     --remove_prompt " Mickey" \
-    --block_steering "0,1,2,3,4,5,6,7" \
+    --use_ssim_mask \
     --prompts_path "prompts_collection/ablation/ablation_prompts_remove.txt"
+
+
+
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/remove/final_steering/snoopy_2" \
+#     --task "remove" \
+#     --strength 1000.0 \
+#     --strength_txt 1.8 \
+#     --top_k_percent 0.5 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/remove/generated_images/snoopy/1000_18_mean_diff_s_one_vec_2_ssim_01" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --vector_type 'diff' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --steer_txt \
+#     --remove_prompt " Mickey" \
+#     --prompts_path "prompts_collection/ablation/ablation_prompts_remove.txt"
+
+# CUDA_VISIBLE_DEVICES=2,3, python apply_steering_with_injection_flux.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/remove/final_steering/snoopy_2" \
+#     --task "remove" \
+#     --strength 1000.0 \
+#     --strength_txt 1.8 \
+#     --top_k_percent 0.5 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --results_dir "experiments/flux_schnell/remove/generated_images/snoopy/1000_18_mean_diff_s_one_vec_2_ssim_01" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --vector_type 'diff' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --use_cls \
+#     --steer_txt \
+#     --remove_prompt " Pikachu" \
+#     --prompts_path "prompts_collection/ablation/ablation_prompts_remove.txt"
 

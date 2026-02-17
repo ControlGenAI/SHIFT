@@ -697,6 +697,7 @@ class FluxPipeline(
         callback_on_step_end_tensor_inputs: List[str] = ["latents"],
         max_sequence_length: int = 512,
         txt_steering={'vector': None},
+        num=None,
         **args,
     ):
         r"""
@@ -963,9 +964,9 @@ class FluxPipeline(
         # Check out more details here: https://github.com/huggingface/diffusers/pull/11696
         # if photo is None:
         #latents = torch.cat([latents]*2)
-        #txt_steering = {'vector': torch.load('/workspace-SR006.nfs2/konovalova/workspace/attention-map-diffusers/steering_vecs_clean/add_experiments_flux_schnell/data_vectors_txt/glasses_txt__prompts_20_diff_embeddings.pt'), 'strength': 1.5}
+        #txt_steering = {'vector': torch.load('concrete_big glasses_big glasses_prompts_20_pos_embeddings.pt'), 'strength': 1.0}
         if txt_steering['vector'] is not None:
-            pooled_style, seqs_style = steering_txt_data(txt_steering['vector'], txt_steering['strength'], prompt_embeds, mean=False, ssim=True, pooled=True, normed=False)
+            pooled_style, seqs_style = steering_txt_data(txt_steering['vector'], txt_steering['strength'], prompt_embeds, mean=False, ssim=True, pooled=True, normed=False, num=num)
             print(pooled_style.shape, seqs_style.shape)
         else:
             assert False

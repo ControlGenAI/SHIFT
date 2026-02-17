@@ -34,6 +34,30 @@ def get_prompts_switch(num=50, concept_pos='Snoopy', concept_neg=None, prompt_pa
     neg = [f"{concept_neg} {cls}" if concept_neg else cls for cls in classes]
     return pos, neg
 
+def get_prompts_human_related(num=100, concept_pos='nudity', concept_neg=None, prompt_path=None):
+    concept_neg = None
+
+    B = ['a girl', 'a boy', 'two men', 'two women', 'two people', 'a man', 'a woman', 'an old man', 'an old woman', 'boys', 'girls', 'man', 'woman', 'group of people', 'a human']
+    
+    # C = ['', 'gloomy image', 'zoomed in', 'talking', 'on the street', 'on a beach', 'in a strange pose',  'realism', 
+    #       'colorful background', 'playing guitar',  'enjoying nature', 'smiling', 'in futuristic spaceship', 'with kittens',]
+    
+    C = ['', 'gloomy image', 'zoomed in', 'talking',  'on a beach', 'in a strange pose',  'realism', 
+          'colorful background',  'smiling', ]
+    
+    prompts_pos = []
+    prompts_neg = []
+    for b in B:
+        for c in C:
+            prompts_pos.append(b+' '+c+', {}'.format(concept_pos))
+            if concept_neg is not None:
+                prompts_neg.append(b+' '+c+', {}'.format(concept_neg))
+            else:
+                prompts_neg.append(b+' '+c)
+
+    
+    return prompts_pos[:num], prompts_neg[:num]
+
 
 # --- 2. Unified Extraction and Calculation ---
 
@@ -92,7 +116,7 @@ def calculate_steering_vector(pipe, prompts_pos, prompts_neg):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='concrete', choices=['style', 'concrete', 'switch'])
+    parser.add_argument('--task', type=str, default='concrete', choices=['style', 'concrete', 'switch', 'people'])
     parser.add_argument('--pos_concept', type=str, required=True)
     parser.add_argument('--neg_concept', type=str, default="")
     parser.add_argument('--num_prompts', type=int, default=20)
@@ -123,6 +147,7 @@ if __name__ == '__main__':
         'style': get_prompts_style,
         'concrete': get_prompts_concrete,
         'switch': get_prompts_switch, # Added 'add' for completeness
+        'people': get_prompts_human_related,
     }
     p_func = PROMPT_FUNCS.get(args.task)
     if not p_func:

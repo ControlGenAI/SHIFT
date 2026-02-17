@@ -10,16 +10,35 @@ from tqdm import tqdm
 from transformers import CLIPProcessor, CLIPModel
 from pytorch_fid import fid_score
 
-# --- Configuration ---
-ORIGIN_DIR = "experiments/flux_schnell/remove/generated_images/snoopy/0_0/steered"
-TARGET_DIR = "experiments/flux_schnell/remove/generated_images/snoopy/1000_18_mean_diff_s_one_vec_2_ssim_01/steered"
-CONCEPTS = ["Snoopy", "SpongeBob",  "Pikachu", "dog", "Mickey", "legislator"]
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+import os
+import torch
+import natsort
+import json
+import numpy as np
+import pandas as pd
+from PIL import Image
+from tqdm import tqdm
+from transformers import CLIPProcessor, CLIPModel
 
 # --- Configuration ---
+# List of (origin_dir, target_dir) tuples
+DIR_PAIRS = [
+    (
+        "experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/0_0_42/steered", 
+        "experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/10_5_mean_diff_s_one_vec_new_only_pooled_2_scaled_clip_not_normed_42/steered"
+    ),
+    (
+        "experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/0_0_10/steered", 
+        "experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/10_5_mean_diff_s_one_vec_new_only_pooled_2_scaled_clip_not_normed_10/steered"
+    ),
+    # ( "another_origin_path", "another_target_path" ),
+]
 
-SAVE_PATH = "./evaluation_results.json"
-
+CONCEPTS = ["Snoopy", "Spongebob", "Pikachu", "dog", "Mickey", "legislator"]
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+PROMPT_FILE = "prompts_collection/ablation/ablation_prompts_remove.txt"
 
 class CASteerEvaluator:
     def __init__(self):
@@ -27,119 +46,89 @@ class CASteerEvaluator:
         self.model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14").to(DEVICE)
         self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14")
         self.model.eval()
+        
+        # Pre-load prompts to avoid re-reading files in loops
+        with open(PROMPT_FILE, "r") as f:
+            self.prompts = [line.strip() for line in f if line.strip()]
 
     def get_concept_from_filename(self, fname):
-        """Extracts target concept based on keywords in your filename format."""
         for concept in CONCEPTS:
             if concept.lower() in fname.lower():
                 return concept
         return None
 
     def compute_clip_score(self, image: Image.Image, text: str):
-        """Calculates 100 * Cosine Similarity."""
         inputs = self.processor(text=[text], images=image, return_tensors="pt", padding=True).to(DEVICE)
         with torch.no_grad():
             outputs = self.model(**inputs)
-            # Normalized embeddings
             img_feat = outputs.image_embeds / outputs.image_embeds.norm(dim=-1, keepdim=True)
             txt_feat = outputs.text_embeds / outputs.text_embeds.norm(dim=-1, keepdim=True)
             similarity = (img_feat * txt_feat).sum(dim=1).item()
         return similarity * 100 
 
+    def evaluate_directory(self, directory, is_target=True):
+        """Helper to process a single directory and return scores per concept."""
+        files = natsort.natsorted([f for f in os.listdir(directory) if f.lower().endswith(('.png', '.jpg'))])
+        scores_per_concept = {c: [] for c in CONCEPTS}
+
+        for fname in tqdm(files, desc=f"Processing {os.path.basename(directory)}", leave=False):
+            concept = self.get_concept_from_filename(fname)
+            if concept:
+                try:
+                    num = int(fname.split('_')[0])
+                    prompt = f"{self.prompts[num]} {concept}"
+                    img = Image.open(os.path.join(directory, fname)).convert("RGB")
+                    score = self.compute_clip_score(img, prompt)
+                    scores_per_concept[concept].append(score)
+                except (ValueError, IndexError):
+                    continue
+        return scores_per_concept
+
     def run_evaluation(self, origin_dir, target_dir):
-        print(target_dir)
-        files = natsort.natsorted([f for f in os.listdir(target_dir) if f.lower().endswith(('.png', '.jpg'))])
-        
-        results = {c: {"clip_scores_steered": [], "clip_scores_origin": [], "fid": 0.0} for c in CONCEPTS}
-        with open("prompts_collection/ablation/ablation_prompts_remove.txt", "r") as f:
-            prompts = [line.strip() for line in f if line.strip()][:29]
-        #1. Calculate CLIP Scores
-        print("\n--- Calculating CLIP Similarity ---")
-        # print(files)
-        for fname in tqdm(files):
-            concept = self.get_concept_from_filename(fname)
-            if concept:
-                num = int(fname.split('_')[0])
-                prompt = prompts[num]
-                img_path = os.path.join(target_dir, fname)
-                img = Image.open(img_path).convert("RGB")
-                prompt = f"{prompt} {concept}"
-                print(prompt)
-                score = self.compute_clip_score(img, prompt)
-                results[concept]["clip_scores_steered"].append(score)
+        """Runs evaluation for one pair and returns a dataframe of results."""
+        target_results = self.evaluate_directory(target_dir)
+        origin_results = self.evaluate_directory(origin_dir)
 
-        files = natsort.natsorted([f for f in os.listdir(origin_dir) if f.lower().endswith(('.png', '.jpg'))])
-        
-        # 1. Calculate CLIP Scores
-        print("\n--- Calculating CLIP Similarity ---")
-        print(origin_dir)
-        for fname in tqdm(files):
-            concept = self.get_concept_from_filename(fname)
-            if concept:
-                num = int(fname.split('_')[0])
-                prompt = prompts[num]
-                
-                img_path = os.path.join(origin_dir, fname)
-                img = Image.open(img_path).convert("RGB")
-                prompt = f"{prompt} {concept}"
-                print(prompt)
-                score = self.compute_clip_score(img, prompt)
-                results[concept]["clip_scores_origin"].append(score)
-
-        # print(results.keys())
-
-        # 2. Calculate FID per Concept
-        # FID requires comparing two full distributions. We create temp folders to isolate concepts.
-        print("\n--- Calculating FID Scores ---")
-        temp_root = "./temp_fid_eval"
-        os.makedirs(temp_root, exist_ok=True)
-
-        # for concept in CONCEPTS:
-        #     tmp_origin = os.path.join(temp_root, f"{concept}_origin")
-        #     tmp_target = os.path.join(temp_root, f"{concept}_target")
-        #     os.makedirs(tmp_origin, exist_ok=True)
-        #     os.makedirs(tmp_target, exist_ok=True)
-
-        #     # Gather concept-specific images from both directories
-        #     count = 0
-        #     for d, tmp in [(origin_dir, tmp_origin), (target_dir, tmp_target)]:
-        #         print(d)
-                
-        #         for f in os.listdir(d):
-                    
-        #             if concept.lower() in f.lower():
-        #                 shutil.copy(os.path.join(d, f), os.path.join(tmp, f))
-        #                 if d == target_dir: count += 1
-
-        #     if count < 2:
-        #         print(f"Skipping FID for {concept}: Insufficient images.")
-        #         results[concept]["fid"] = float('nan')
-        #     else:
-        #         score = fid_score.calculate_fid_given_paths(
-        #             [tmp_origin, tmp_target], batch_size=50, device=DEVICE, dims=2048
-        #         )
-        #         results[concept]["fid"] = score
-
-        # # Cleanup temp folders
-        # shutil.rmtree(temp_root)
-
-        # 3. Finalize Data
-        final_table = []
-        for concept, data in results.items():
-            mean_cs = np.mean(data["clip_scores_origin"]) if data["clip_scores_origin"] else 0
-            mean_cs_target = np.mean(data["clip_scores_steered"]) if data["clip_scores_steered"] else 0
-            final_table.append({
+        pair_data = []
+        for concept in CONCEPTS:
+            orig_mean = np.mean(origin_results[concept]) if origin_results[concept] else 0
+            steer_mean = np.mean(target_results[concept]) if target_results[concept] else 0
+            pair_data.append({
                 "Concept": concept,
-                "CS (CLIP Similarity)": f"{mean_cs:.2f}",
-                "CS (CLIP Similarity) steered": f"{mean_cs_target:.2f}",
-                "FID": f"{data['fid']:.2f}"
+                "Origin_CS": orig_mean,
+                "Steered_CS": steer_mean
             })
         
-        df = pd.DataFrame(final_table)
-        print("\nEvaluation Results (Similar to CASteer Table 15):")
-        print(df.to_string(index=False))
-        #df.to_json(SAVE_PATH, orient="records")
+        return pd.DataFrame(pair_data)
 
 if __name__ == "__main__":
     evaluator = CASteerEvaluator()
-    evaluator.run_evaluation(ORIGIN_DIR, TARGET_DIR)
+    all_dfs = []
+
+    for i, (orig, target) in enumerate(DIR_PAIRS):
+        print(f"\n--- Evaluating Pair {i+1}/{len(DIR_PAIRS)} ---")
+        print(f"Origin: {orig}\nTarget: {target}")
+        
+        df_pair = evaluator.run_evaluation(orig, target)
+        all_dfs.append(df_pair)
+
+    # Combine all results
+    if all_dfs:
+        full_results = pd.concat(all_dfs)
+        
+        # Calculate Mean across all directory pairs and concepts
+        mean_origin = full_results["Origin_CS"].mean()
+        mean_steered = full_results["Steered_CS"].mean()
+        
+        # Concept-wise summary
+        summary = full_results.groupby("Concept").mean().reset_index()
+
+        print("\n" + "="*50)
+        print("FINAL CONSOLIDATED RESULTS (Concept-wise Mean)")
+        print("="*50)
+        print(summary.to_string(index=False))
+        
+        print("\n" + "="*50)
+        print(f"GRAND TOTAL MEAN ORIGIN CS:  {mean_origin:.2f}")
+        print(f"GRAND TOTAL MEAN STEERED CS: {mean_steered:.2f}")
+        print("="*50)

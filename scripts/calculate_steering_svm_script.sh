@@ -109,8 +109,8 @@
 #    --save_svm \
 #    --timesteps 4 \
 #    --blocks 19 \
-#    --classifier 'none' \
-#    --save_dir "experiments/flux_schnell/switch/final_steering/apple_banana/"
+#    --classifier 'rbf' \
+#    --save_dir "experiments/flux_schnell/switch/final_steering/apple_banana_logreg/"
 
 # python calculate_steering_vectors.py \
 #    --neg_path "experiments/flux_schnell/switch/data_vectors/car_bicycle_bicycle_gs_0.0_prompts_20_neg_attn_enc.pt" \
@@ -146,8 +146,8 @@
 #    --save_svm \
 #    --timesteps 4 \
 #    --blocks 19 \
-#    --classifier 'none' \
-#    --save_dir "experiments/flux_schnell/switch/final_steering/kettle_vase/"
+#    --classifier 'rbf' \
+#    --save_dir "experiments/flux_schnell/switch/final_steering/kettle_vase_rbf_04/"
 
 # # python calculate_steering_vectors.py \
 # #    --pos_path "test/data_vectors_txt/pos_text.pt" \
@@ -165,12 +165,42 @@
 # #    --classifier 'none' \
 
 
+# python calculate_steering_vectors.py \
+#    --neg_path "experiments/flux_schnell/remove/data_vectors/nudity__gs_0.0_prompts_135_neg_attn_enc.pt" \
+#    --pos_path "experiments/flux_schnell/remove/data_vectors/nudity__gs_0.0_prompts_135_pos_attn_enc.pt" \
+#    --save_svm \
+#    --timesteps 4 \
+#    --blocks 19 \
+#    --n_samples 135 \
+#    --classifier 'none' \
+#    --save_dir "experiments/flux_schnell/remove/final_steering/nudity_135/"
+
+
+# python calculate_steering_vectors.py \
+#    --neg_path "experiments/flux_schnell/switch/data_vectors_image/apple_banana_banana_gs_0.0_prompts_63_neg_attn_enc.pt" \
+#    --pos_path "experiments/flux_schnell/switch/data_vectors_image/apple_banana_banana_gs_0.0_prompts_63_pos_attn_enc.pt" \
+#    --save_svm \
+#    --timesteps 4 \
+#    --blocks 19 \
+#    --classifier 'rbf' \
+#    --save_dir "experiments/flux_schnell/switch/final_steerin_image/apple_banana_rbf_63_PCA_20/"
+
+
 python calculate_steering_vectors.py \
-   --neg_path "experiments/flux_schnell/remove/data_vectors/Snoopy_big__gs_0.0_prompts_35_neg_attn_enc.pt" \
-   --pos_path "experiments/flux_schnell/remove/data_vectors/Snoopy_big__gs_0.0_prompts_35_pos_attn_enc.pt" \
+   --neg_path "experiments/flux_schnell/switch/data_vectors_image/apple_banana_banana_gs_0.0_prompts_63_neg_attn_enc.pt" \
+   --pos_path "experiments/flux_schnell/switch/data_vectors_image/apple_banana_banana_gs_0.0_prompts_63_pos_attn_enc.pt" \
    --save_svm \
    --timesteps 4 \
    --blocks 19 \
-   --n_samples 35 \
    --classifier 'none' \
-   --save_dir "experiments/flux_schnell/remove/final_steering/snoopy_big/"
+   --save_dir "experiments/flux_schnell/switch/final_steerin_image/apple_banana_63_PCA_20/"
+
+
+python calculate_steering_vectors.py \
+   --neg_path "experiments/flux_schnell/switch/data_vectors_image/apple_banana_banana_gs_0.0_prompts_63_neg_attn_enc.pt" \
+   --pos_path "experiments/flux_schnell/switch/data_vectors_image/apple_banana_banana_gs_0.0_prompts_63_pos_attn_enc.pt" \
+   --save_svm \
+   --timesteps 4 \
+   --blocks 19 \
+   --classifier 'logistic' \
+   --save_dir "experiments/flux_schnell/switch/final_steerin_image/apple_banana_logreg_63_PCA_20/"

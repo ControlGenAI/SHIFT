@@ -9,6 +9,8 @@ from diffusers import StableDiffusion3Pipeline, FluxPipeline
 from torchvision.utils import make_grid
 from torchvision.transforms import ToTensor
 from PIL import Image
+import itertools
+import random
 
 # --- 1. Prompt Generation (Restored) ---
 
@@ -37,6 +39,31 @@ def get_prompts_switch(num=50, concept_pos='Snoopy', concept_neg=None, prompt_pa
     neg = [f"{concept_neg} {cls}" if concept_neg else cls for cls in classes]
     return pos, neg
 
+
+def get_prompts_human_related(num=100, concept_pos='nudity', concept_neg=None, prompt_path=None):
+    concept_neg = None
+
+    B = ['a girl', 'a boy', 'two men', 'two women', 'two people', 'a man', 'a woman', 'an old man', 'an old woman', 'boys', 'girls', 'man', 'woman', 'group of people', 'a human']
+    
+    # C = ['', 'gloomy image', 'zoomed in', 'talking', 'on the street', 'on a beach', 'in a strange pose',  'realism', 
+    #       'colorful background', 'playing guitar',  'enjoying nature', 'smiling', 'in futuristic spaceship', 'with kittens',]
+    
+    C = ['', 'gloomy image', 'zoomed in', 'talking',  'on a beach', 'in a strange pose',  'realism', 
+          'colorful background',  'smiling', ]
+    
+    prompts_pos = []
+    prompts_neg = []
+    for b in B:
+        for c in C:
+            prompts_pos.append(b+' '+c+', {}'.format(concept_pos))
+            if concept_neg is not None:
+                prompts_neg.append(b+' '+c+', {}'.format(concept_neg))
+            else:
+                prompts_neg.append(b+' '+c)
+
+    
+    return prompts_pos[:num], prompts_neg[:num]
+
 # --- 2. Modular Architecture ---
 
 class SteeringHookManager:
@@ -60,14 +87,16 @@ class SteeringHookManager:
         def wrapper(module, input, output):
             # Extract activation based on model type (SD3 vs Flux)
             act = self.handler_fn(output, self.activations_type, self.act_idx)
-            
+           # print(act.shape)
+            #act = act.mean(1, keepdim=True)
             if layer_idx < self.save_layers:
                 #print(act.shape)
                 if self.current_step not in self.data:
                     self.data[self.current_step] = {}
                 if layer_idx not in self.data[self.current_step]:
                     self.data[self.current_step][layer_idx] = []
-            
+
+                print(self.current_step, layer_idx, act.shape)
                 self.data[self.current_step][layer_idx].append(act.detach().cpu())
 
             self.layers_called_in_step += 1
@@ -79,7 +108,7 @@ class SteeringHookManager:
 # Mapping for Model-Specific Logic
 MODEL_HANDLERS = {
     'sd3': lambda out, t, idx: out[1][idx] if t == 'attn_enc' else (out[0][idx] if t == 'attn_im' else out[idx]),
-    'flux': lambda out, t, idx: (out[1] if isinstance(out, tuple) else out)[:, :, :]
+    'flux': lambda out, t, idx: (out[0] if isinstance(out, tuple) else out)[:, :, :]
 }
 
 # --- 3. The Extraction Engine ---
@@ -111,6 +140,7 @@ def run_extraction(pipe, model_type, prompts, args):
             manager.reset_state()
             
             # Seed control (matching your original logic)
+            print(42000 + i*10, batch, [(42000 + i*10 + j) for j in range(len(batch))])
             generators = [torch.Generator("cuda").manual_seed(42000 + i*10 + j) for j in range(len(batch))]
             
             res = pipe(batch, num_inference_steps=args.num_inference_steps, guidance_scale=args.gs, generator=generators)
@@ -126,7 +156,7 @@ def run_extraction(pipe, model_type, prompts, args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='style', choices=['style', 'concrete', 'switch'])
+    parser.add_argument('--task', type=str, default='style', choices=['style', 'concrete', 'switch', 'people'])
     parser.add_argument('--exp_type', type=str, default='3d')
     parser.add_argument('--pos_concept', type=str, default='picasso')
     parser.add_argument('--neg_concept', type=str, default='realistic')
@@ -156,6 +186,8 @@ if __name__ == '__main__':
         func = get_prompts_style  
     elif args.task == 'concrete':
         func = get_prompts_concrete
+    elif args.task == 'people':
+        func = get_prompts_human_related
     else:
         func = get_prompts_switch
 
@@ -200,6 +232,16 @@ if __name__ == '__main__':
             neg_imgs, 
             f"negative_{'baseline'}_vs_{args.exp_type}_{args.num_prompts}_grid.png"
         )
+
+        os.makedirs(os.path.join(args.save_image_dir, 'neg'), exist_ok=True)
+        os.makedirs(os.path.join(args.save_image_dir, 'pos'), exist_ok=True)
+        for i, im in enumerate(neg_imgs):
+            filename = f'{i}.png'
+            im.save(os.path.join(args.save_image_dir, 'neg', filename))
+
+        for i, im in enumerate(pos_imgs):
+            filename = f'{i}.png'
+            im.save(os.path.join(args.save_image_dir, 'pos', filename))
 
         print(f"Saved image grids to {args.save_image_dir}")
 

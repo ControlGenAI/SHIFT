@@ -20,3 +20,17 @@ Q16/
 Receler/
 scripts/.nfs80b3844107dd348700000f2f
 KV-Edit/
+coco_10k_subset/
+coco_2014_benchmark/
+coco_images_afree/
+coco_real_images/
+coco_real_images_correct/
+coco_real_images_correct_1024/
+flux_generated_images_coco_correct/
+generated_images/
+test_optimization/
+test_optimization_1
+additional/
+additional_real/
+envs/
+.ipynb_checkpoints/

@@ -1,8 +1,9 @@
-the field
+pink background
+red background
 blue background
-gray background
 green background
 sea
+gray background
 sports car
 orange background
 white background
@@ -11,7 +12,7 @@ bench
 black background
 river
 park
-lake
+sky
 house
 yellow background
 sky

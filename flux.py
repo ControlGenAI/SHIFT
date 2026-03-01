@@ -966,7 +966,7 @@ class FluxPipeline(
         #latents = torch.cat([latents]*2)
         #txt_steering = {'vector': torch.load('concrete_big glasses_big glasses_prompts_20_pos_embeddings.pt'), 'strength': 1.0}
         if txt_steering['vector'] is not None:
-            pooled_style, seqs_style = steering_txt_data(txt_steering['vector'], txt_steering['strength'], prompt_embeds, mean=False, ssim=True, pooled=True, normed=False, num=num)
+            pooled_style, seqs_style = steering_txt_data(txt_steering['vector'], txt_steering['strength'], prompt_embeds, mean=False, ssim=True, pooled=True, normed=False)
             print(pooled_style.shape, seqs_style.shape)
         else:
             assert False

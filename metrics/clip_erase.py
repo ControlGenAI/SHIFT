@@ -25,14 +25,34 @@ from transformers import CLIPProcessor, CLIPModel
 # --- Configuration ---
 # List of (origin_dir, target_dir) tuples
 DIR_PAIRS = [
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/0_0/steered", 
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/10_5_mean_diff_s_one_vec_new_only_pooled_2_scaled_clip_not_normed_42/steered"
+    # ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/0_0/steered", 
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/1000_5_mean_diff_s_one_vec_new_only_pooled_2_scaled_clip_all_42/steered"
+    # ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/0_0/steered", 
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/0_6_mean_diff_s_one_vec_new_only_pooled_2_scaled_clip/steered"
+    # ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/0_0/steered", 
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/500_6_mean_diff_s_one_vec_new_only_pooled_2_scaled_clip_no_cls/steered"
+    # ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/0_0/steered", 
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/500_6_mean_diff_m_one_vec_new_only_pooled_2_scaled_clip/steered"
+    # ),
     (
-        "experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/0_0_42/steered", 
-        "experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/10_5_mean_diff_s_one_vec_new_only_pooled_2_scaled_clip_not_normed_42/steered"
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/0_0/steered", 
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/500_6_mean_diff_s_one_vec_new_only_pooled_2_scaled_clip_0/steered"
     ),
-    (
-        "experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/0_0_10/steered", 
-        "experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/10_5_mean_diff_s_one_vec_new_only_pooled_2_scaled_clip_not_normed_10/steered"
-    ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/0_0_10/steered", 
+    #     "experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/10_5_mean_diff_s_one_vec_new_only_pooled_2_scaled_clip_not_normed_10/steered"
+    # ),
     # ( "another_origin_path", "another_target_path" ),
 ]
 

@@ -8,8 +8,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 
 # --- 1. Expanded Classifier Configuration ---
 CLASSIFIER_CONFIGS = {
@@ -38,7 +36,7 @@ def train_classifier(X, y, X_test, y_test, config_key, c_val, seed):
     if model_type == 'linearsvc':
         clf = LinearSVC(**cfg, C=c_val, random_state=seed, max_iter=2000)
     elif model_type == 'logistic':
-        clf = LogisticRegression(**cfg, C=c_val, random_state=seed, max_iter=1000)
+        clf = LogisticRegression(**cfg, C=c_val, probability=True,  random_state=seed, max_iter=1000)
     elif model_type == 'svc_rbf':
         # Non-linear SVM: kernel='rbf'
         clf = SVC(kernel='rbf', C=c_val,  probability=True, gamma=cfg['gamma'], random_state=seed)
@@ -117,14 +115,10 @@ def train_ensemble_svms_best_tokens(data_pos, data_neg, best_tokens, args):
             X_p = prepare_data_slice(data_pos[step][layer], indices, args.n_samples)
             X_n = prepare_data_slice(data_neg[step][layer], indices, args.n_samples)
             X, y = np.vstack([X_p.cpu().numpy(), X_n.cpu().numpy()]), np.concatenate([np.ones(len(X_p)), np.zeros(len(X_n))])
-            #print(torch.from_numpy(X).norm(dim=-1))
+            print(torch.from_numpy(X).norm(dim=-1))
             coefs = []
             models_ensemble = []
-            
-            
             for i in range(args.n_ensemble):
-                scaler = StandardScaler()
-                pca = PCA(n_components=20)
                 X_train, X_test, y_train, y_test = train_test_split(
                     X, y, 
                     test_size=0.4, 
@@ -132,20 +126,9 @@ def train_ensemble_svms_best_tokens(data_pos, data_neg, best_tokens, args):
                     stratify=y, 
                     shuffle=True,
                 )
-                print(X_train.shape)
-                X_train = scaler.fit_transform(X_train)
-                X_train = pca.fit_transform(X_train)
-                print(X_train.shape)
-                print('======')
-
-                X_test = scaler.transform(X_test)
-                X_test = pca.transform(X_test)
                 # FIXED: Call the generalized trainer
                 m, c, s = train_classifier(X_train, y_train, X_test, y_test, args.classifier, args.c_val, args.random_seed_base + i)
-                
-                models_ensemble.append({'models': m, 'pca': pca, 'scaler': scaler})
-                # models_ensemble['pca'].append(pca)
-                # models_ensemble['scaler'].append(scaler)
+                models_ensemble.append(m)
                 if c is not None:
                     coefs.append(c)
                 scores_array[i, step, block] = s
@@ -156,7 +139,6 @@ def train_ensemble_svms_best_tokens(data_pos, data_neg, best_tokens, args):
                 normals[step][layer] = None # Marker for non-linear models
 
             models[step][layer] = models_ensemble
-            print(models[step][layer])
             
             print(f"[{args.classifier}] Step {step}, Block {block}. Mean Score: {np.mean(scores_array[:, step, block]):.4f}, {X_train.shape}")
             
@@ -213,7 +195,6 @@ def main():
         return
 
     models, normals, scores = train_ensemble_svms_best_tokens(data_pos, data_neg, best_tokens, args)
-    print(models[0]['layer_0'])
     torch.save(normals, f'{prefix}_normals.pt')
     torch.save(scores, f'{prefix}_scores.pt')
     torch.save(models, f'{prefix}_svm_models.pt')

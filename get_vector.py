@@ -89,7 +89,7 @@ class SteeringHookManager:
             act = self.handler_fn(output, self.activations_type, self.act_idx)
            # print(act.shape)
             #act = act.mean(1, keepdim=True)
-            if layer_idx < self.save_layers:
+            if layer_idx < self.save_layers and self.current_step < 1:
                 #print(act.shape)
                 if self.current_step not in self.data:
                     self.data[self.current_step] = {}
@@ -108,7 +108,7 @@ class SteeringHookManager:
 # Mapping for Model-Specific Logic
 MODEL_HANDLERS = {
     'sd3': lambda out, t, idx: out[1][idx] if t == 'attn_enc' else (out[0][idx] if t == 'attn_im' else out[idx]),
-    'flux': lambda out, t, idx: (out[0] if isinstance(out, tuple) else out)[:, :, :]
+    'flux': lambda out, t, idx: (out[1] if isinstance(out, tuple) else out)[:, :, :]
 }
 
 # --- 3. The Extraction Engine ---
@@ -140,7 +140,7 @@ def run_extraction(pipe, model_type, prompts, args):
             manager.reset_state()
             
             # Seed control (matching your original logic)
-            print(42000 + i*10, batch, [(42000 + i*10 + j) for j in range(len(batch))])
+            #print(42000 + i*10 + j)
             generators = [torch.Generator("cuda").manual_seed(42000 + i*10 + j) for j in range(len(batch))]
             
             res = pipe(batch, num_inference_steps=args.num_inference_steps, guidance_scale=args.gs, generator=generators)
@@ -153,6 +153,17 @@ def run_extraction(pipe, model_type, prompts, args):
     return vectors, all_images
 
 # --- 4. Main execution with all your arguments restored ---
+
+def new_func(args, pos_imgs, neg_imgs):
+    os.makedirs(os.path.join(args.save_image_dir, 'neg'), exist_ok=True)
+    os.makedirs(os.path.join(args.save_image_dir, 'pos'), exist_ok=True)
+    for i, im in enumerate(neg_imgs):
+        filename = f'{i}.png'
+        im.save(os.path.join(args.save_image_dir, 'neg', filename))
+
+    for i, im in enumerate(pos_imgs):
+        filename = f'{i}.png'
+        im.save(os.path.join(args.save_image_dir, 'pos', filename))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -179,7 +190,7 @@ if __name__ == '__main__':
     pipe_cls = FluxPipeline if m_type == 'flux' else StableDiffusion3Pipeline
 
     print(f"Loading {args.model_name}...")
-    pipe = pipe_cls.from_pretrained(args.model_name, torch_dtype=torch.float16, device_map="balanced")
+    pipe = pipe_cls.from_pretrained(args.model_name, torch_dtype=torch.bfloat16, device_map="balanced")
 
     # Prompt Selection
     if args.task == 'style':
@@ -197,16 +208,21 @@ if __name__ == '__main__':
     print(pos_p, neg_p)
     print("Running Positive Pass...")
     pos_vecs, pos_imgs = run_extraction(pipe, m_type, pos_p, args)
-    
+     # Save Results
+    os.makedirs(args.save_dir, exist_ok=True)
+    f_template = f"{args.exp_type}_{args.neg_concept}_gs_{args.gs}_prompts_{args.num_prompts}_{{}}_{args.activations_type}_1.pt"
+   
+    torch.save(pos_vecs, os.path.join(args.save_dir, f_template.format("pos")))
+    del pos_vecs 
     print("Running Negative Pass...")
     neg_vecs, neg_imgs = run_extraction(pipe, m_type, neg_p, args)
 
     # Save Results
     os.makedirs(args.save_dir, exist_ok=True)
-    f_template = f"{args.exp_type}_{args.neg_concept}_gs_{args.gs}_prompts_{args.num_prompts}_{{}}_{args.activations_type}.pt"
-    torch.save(pos_vecs, os.path.join(args.save_dir, f_template.format("pos")))
+    f_template = f"{args.exp_type}_{args.neg_concept}_gs_{args.gs}_prompts_{args.num_prompts}_{{}}_{args.activations_type}_1.pt"
+   
     torch.save(neg_vecs, os.path.join(args.save_dir, f_template.format("neg")))
-
+    del neg_vecs
     # Image Saving (Optional)
     # 4. SAVE IMAGES
     if args.save_image_dir and pos_imgs and neg_imgs:
@@ -233,15 +249,7 @@ if __name__ == '__main__':
             f"negative_{'baseline'}_vs_{args.exp_type}_{args.num_prompts}_grid.png"
         )
 
-        os.makedirs(os.path.join(args.save_image_dir, 'neg'), exist_ok=True)
-        os.makedirs(os.path.join(args.save_image_dir, 'pos'), exist_ok=True)
-        for i, im in enumerate(neg_imgs):
-            filename = f'{i}.png'
-            im.save(os.path.join(args.save_image_dir, 'neg', filename))
-
-        for i, im in enumerate(pos_imgs):
-            filename = f'{i}.png'
-            im.save(os.path.join(args.save_image_dir, 'pos', filename))
+        #new_func(args, pos_imgs, neg_imgs)
 
         print(f"Saved image grids to {args.save_image_dir}")
 

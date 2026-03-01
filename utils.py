@@ -152,11 +152,11 @@ def calculate_cls_score(
         score_cls = model.predict_proba(a)  if model is not None else np.array([[0.5, 0.5]])
         if task == 'add concept':
             scoreeee =  min(cls_min, (1 / ((1 - score_cls[0][0]) + 1e-8) - 1)) # 21 * score_cls[0][1]**2
-            print(score_cls, scoreeee)
+            #print(score_cls, scoreeee)
         else:
             #assert False
             scoreeee = (1 / ((1 - score_cls[0][1]) + 1e-8) - 1).clip(0, cls_min) #  21 * score_cls[0][1]**2  
-            print('dd', scoreeee)
+            #print('dd', scoreeee)
         return scoreeee, score_cls[0][0], None
     assert False
     model_instance = model[0] if isinstance(model, (list, tuple)) else model
@@ -205,7 +205,7 @@ def apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_s
     print(scale)
     print('---'*10)
     if not normed:
-        new_pooled_embeds = pooled_prompt_embeds + pooled_style# * scale
+        new_pooled_embeds = pooled_prompt_embeds + pooled_style * scale
         new_prompt_embeds = prompt_embeds + seqs_style
     else:
         
@@ -222,9 +222,9 @@ def apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_s
     return new_pooled_embeds, new_prompt_embeds
 
 
-def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=False, ssim=False, pooled=True, normed=True, num=None):
-    seqs_style = vector_txt['sequence'].to(prompt_embeds.dtype).to(prompt_embeds.device)[num:num+1].mean(0, keepdim=True) 
-    pooled_style = vector_txt['pooled'].to(prompt_embeds.dtype).to(prompt_embeds.device)[num:num+1].mean(0, keepdim=True) 
+def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=False, ssim=False, pooled=True, normed=True):
+    seqs_style = vector_txt['sequence'].to(prompt_embeds.dtype).to(prompt_embeds.device).mean(0, keepdim=True) 
+    pooled_style = vector_txt['pooled'].to(prompt_embeds.dtype).to(prompt_embeds.device).mean(0, keepdim=True) 
     #normed = True
     mean = True
     
@@ -261,7 +261,7 @@ def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=False, ssim=Fals
     else:
         pooled_style = pooled_style * 0.
     
-    return pooled_style, seqs_style #-torch.zeros_like(seqs_style).to(pooled_style.device).to(pooled_style.dtype)
+    return -pooled_style, -torch.zeros_like(seqs_style).to(pooled_style.device).to(pooled_style.dtype)
 
 def load_steering_data(
     svm_model_path: Optional[str], 

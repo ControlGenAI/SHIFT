@@ -33,4 +33,5 @@ test_optimization_1
 additional/
 additional_real/
 envs/
+flux_ablation_results/
 .ipynb_checkpoints/

@@ -219,7 +219,7 @@ def apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_s
         new_prompt_embeds = new_prompt_embeds / new_prompt_embeds.norm(dim=-1, keepdim=True) * init_prompt_norm
 
 
-    return new_pooled_embeds, new_prompt_embeds
+    return new_pooled_embeds, new_prompt_embeds, scale
 
 
 def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=False, ssim=False, pooled=True, normed=True):

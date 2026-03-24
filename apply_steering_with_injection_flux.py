@@ -165,6 +165,7 @@ def apply_attention_steering(pipe, args, vector, idx=None):
 
     def steering_hook(layer_idx: int):
         def hook(module, input, output):
+           
             step = state["step"]
             if layer_idx == cfg["last_layer"]: state["step"] += 1
 
@@ -173,6 +174,8 @@ def apply_attention_steering(pipe, args, vector, idx=None):
             if args.t_steering != 'all' and step not in args.t_steering: return output
             
             if len(output) != 2: return output
+            
+            scale = module.scale
 
             if eigen_info is not None:
                 
@@ -232,7 +235,8 @@ def apply_attention_steering(pipe, args, vector, idx=None):
             # score_val = score_val[None].T
             #print(score_val.shape, score.shape)
             #print(score_val)
-
+            #score_val *= scale.item()
+            print(score_val, scale)
              
             
             
@@ -334,39 +338,40 @@ if __name__ == "__main__":
         coco_prompts = ["A high quality photo"]
     dataset = load_dataset("AIML-TUDA/i2p", split="train")
     # print('================')
-    # print(len(dataset))
+    print(len(dataset))
     print('================')
-    with open('/home/jovyan/konovalova/steering/coco_seeds.txt', "r") as f:
+    with open('/home/jovyan/konovalova/steering/niche_art_seeds.txt', "r") as f:
         coco_seeds = [line.strip() for line in f if line.strip()][:]
     # Main Loop
     for seed in [42]:
         for idx, prompt in enumerate(coco_prompts):
-        
-        # for idx, sample in tqdm(enumerate(dataset)):
-        #     prompt = sample['prompt']
-        #     seed = sample['sd_seed']
+            #print(len(coco_seeds), coco_seeds, idx)
+        # image_path = []
+        #for idx, sample in tqdm(enumerate(dataset)):
+            # prompt = sample['prompt']
+            # seed = sample['sd_seed']
             sanitized = prompt.replace(" ", "_").replace("/", "").replace(",", "")[:50]
             suffix = f"s_{args.strength}_mask_{args.use_ssim_mask}_v_{args.vector_type}"
             
             if os.path.exists(os.path.join(f'{args.results_dir}', 'steered', f"{idx:02d}_{sanitized}_{suffix}.png")):
                 #image_path.append(f"{idx:02d}_{sanitized}_{suffix}.png")
-                
+                #pass
                 continue
             else:
                 print(os.path.join(f'{args.results_dir}', 'steered', f"{idx:02d}_{sanitized}_{suffix}.png"))
-            seed = coco_seeds[idx]
+            seed = int(coco_seeds[idx])
             #prompt = sample['prompt']
-            #seed = sample['sd_seed']
-            print(seed, prompt)
+            #seed = sampleы['sd_seed']
+            # print(seed, prompt)
             if args.task == 'remove':
-                prompt = prompt# + args.remove_prompt
-            print(f"Processing {idx+1}/{len(coco_prompts)}: {prompt}", args.inference_steps, args.guidance_scale)
+                prompt = prompt #+ args.remove_prompt
+            print(f"Processing {idx+1}/{len(coco_prompts)}: {prompt}", seed,  args.inference_steps, args.guidance_scale)
             
             hook_state, remove_hooks = apply_attention_steering(pipe, args, vector)
             generator = torch.Generator().manual_seed(seed)
             
             images = pipe(
-                prompt, num_inference_steps=args.inference_steps, guidance_scale=args.guidance_scale,
+                prompt, num_inference_steps=args.inference_steps, guidance_scale=args.guidance_scale, width=1024, height=1024,
                 generator=generator, structure_strength=args.structure,
                 callback=lambda step, **k: hook_state.update({"step": step}), callback_steps=1,
                 txt_steering=txt_steering
@@ -391,8 +396,8 @@ if __name__ == "__main__":
             sanitized = prompt.replace(" ", "_").replace("/", "").replace(",", "")[:50]
             suffix = f"s_{args.strength}_mask_{args.use_ssim_mask}_v_{args.vector_type}"
             os.makedirs(os.path.join(f'{args.results_dir}', 'steered'), exist_ok=True)
-            print(os.path.join(f'{args.results_dir}_', 'steered', f"{idx:02d}_{sanitized}_{suffix}.png"))
-            print(images[0])
+            #print(os.path.join(f'{args.results_dir}', 'steered', f"{idx:02d}_{sanitized}_{suffix}.png"))
+            #print(images[0])
             #images[0].save('test.png')
             try:
                 images[0].save(os.path.join(f'{args.results_dir}', 'steered', f"{idx:02d}_{sanitized}_{suffix}.png"))
@@ -403,6 +408,6 @@ if __name__ == "__main__":
                 images[1].save(os.path.join(args.results_dir, 'origin', f"{idx:02d}_orig.png"))
 
             remove_hooks()
-    #torch.save(image_path, 'all_image_names_dev.pt')
-            if idx >= 10000:
+    #torch.save(image_path, f'all_image_names_dev_{args.strength}.pt')
+            if idx >= 5000:
                 assert False

@@ -45,18 +45,229 @@ DIR_PAIRS = [
     #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/0_0/steered", 
     #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/500_6_mean_diff_m_one_vec_new_only_pooled_2_scaled_clip/steered"
     # ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/0_0/steered", 
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/500_6_mean_diff_s_new_only_pooled_2_scaled_clip/steered"
+    # ),
     (
-        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/0_0/steered", 
-        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/500_6_mean_diff_s_one_vec_new_only_pooled_2_scaled_clip_0/steered"
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_42/steered", 
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy/500_6_mean_normals_s_one_vec_new_only_pooled_2_scaled_clip/steered"
     ),
     # (
     #     "experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/0_0_10/steered", 
     #     "experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/10_5_mean_diff_s_one_vec_new_only_pooled_2_scaled_clip_not_normed_10/steered"
     # ),
     # ( "another_origin_path", "another_target_path" ),
+    # (
+    #     "/home/jovyan/konovalova/erasing/notebooks/origin_big", 
+    #     "/home/jovyan/konovalova/erasing/notebooks/big_artists"
+    # ),
 ]
 
-CONCEPTS = ["Snoopy", "Spongebob", "Pikachu", "dog", "Mickey", "legislator"]
+# DIR_PAIRS = [
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_10/steered", 
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_10"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_20/steered", 
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_20"
+#     ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_30/steered", 
+    #     "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_30"
+    # ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_42/steered", 
+    #     "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_42"
+    # ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_50/steered", 
+    #     "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_50"
+    # ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_60/steered", 
+    #     "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_60"
+    # ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_70/steered", 
+    #     "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_70"
+    # ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_80/steered", 
+    #     "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_80"
+    # ),
+    # (
+    #     "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_90/steered", 
+    #     "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_90"
+    # ),
+    
+# ]
+
+# DIR_PAIRS = [
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_10/steered", 
+#         "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_10"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_20/steered", 
+#         "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_20"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_30/steered", 
+#         "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_30"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_42/steered", 
+#         "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_42"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_50/steered", 
+#         "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_50"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_60/steered", 
+#         "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_60"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_70/steered", 
+#         "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_70"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_80/steered", 
+#         "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_80"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_90/steered", 
+#         "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_90"
+#     ),
+    
+# ]
+
+
+
+# DIR_PAIRS = [
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_10/steered", 
+#         "/home/jovyan/konovalova/steering/experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/500_6_10/steered"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_20/steered", 
+#         "/home/jovyan/konovalova/steering/experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/500_6_20/steered"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_30/steered", 
+#         "/home/jovyan/konovalova/steering/experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/500_6_30/steered"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_42/steered", 
+#         "/home/jovyan/konovalova/steering/experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/500_6_42/steered"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_50/steered", 
+#         "/home/jovyan/konovalova/steering/experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/500_6_50/steered"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_60/steered", 
+#         "/home/jovyan/konovalova/steering/experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/500_6_60/steered"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_70/steered", 
+#         "/home/jovyan/konovalova/steering/experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/500_6_70/steered"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_80/steered", 
+#         "/home/jovyan/konovalova/steering/experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/500_6_80/steered"
+#     ),
+#     (
+#         "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_90/steered", 
+#         "/home/jovyan/konovalova/steering/experiments/flux_schnell/remove/generated_images_big_dataset/snoopy/500_6_90/steered"
+#     ),
+    
+# ]
+
+# DIR_PAIRS = [
+#     (
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy_origin/0_0_10",
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_10"
+#     ),
+#     (
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy_origin/0_0_20",
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_20"
+#     ),
+#     (
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy_origin/0_0_30",
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_30"
+#     ),
+#     (
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy_origin/0_0_42",
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_42"
+#     ),
+#     (
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy_origin/0_0_50",
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_50"
+#     ),
+#     (
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy_origin/0_0_60",
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_60"
+#     ),
+#     (
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy_origin/0_0_70",
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_70"
+#     ),
+#     (
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy_origin/0_0_80",
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_80"
+#     ),
+#     (
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy_origin/0_0_90",
+#         "/home/jovyan/konovalova/erasing/notebooks/snoopy/0_0_90"
+#     ),
+    
+# ]
+
+DIR_PAIRS = [
+    (
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_10/steered", 
+        "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_10"
+    ),
+    (
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_20/steered", 
+        "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_20"
+    ),
+    (
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_30/steered", 
+        "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_30"
+    ),
+    (
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_42/steered", 
+        "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_42"
+    ),
+    (
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_50/steered", 
+        "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_50"
+    ),
+    (
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_60/steered", 
+        "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_60"
+    ),
+    (
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_70/steered", 
+        "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_70"
+    ),
+    (
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_80/steered", 
+        "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_80"
+    ),
+    (
+        "experiments/flux_schnell/remove/generated_images_big_ablation/snoopy_v100/0_0_90/steered", 
+        "/home/jovyan/konovalova/minimalist_concept_erasure/baselines/ca/output_snoopy/images/ca_results_1_epochs/0_0_90"
+    ),
+    
+]
+
+CONCEPTS = ["Pikachu"]
+# CONCEPTS = ["Warhol", "Gogh", "Picasso", "Rembrandt", "Caravaggio"]
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 PROMPT_FILE = "prompts_collection/ablation/ablation_prompts_remove.txt"
 
@@ -107,15 +318,15 @@ class CASteerEvaluator:
     def run_evaluation(self, origin_dir, target_dir):
         """Runs evaluation for one pair and returns a dataframe of results."""
         target_results = self.evaluate_directory(target_dir)
-        origin_results = self.evaluate_directory(origin_dir)
+        #origin_results = self.evaluate_directory(origin_dir)
 
         pair_data = []
         for concept in CONCEPTS:
-            orig_mean = np.mean(origin_results[concept]) if origin_results[concept] else 0
+            #orig_mean = np.mean(origin_results[concept]) if origin_results[concept] else 0
             steer_mean = np.mean(target_results[concept]) if target_results[concept] else 0
             pair_data.append({
                 "Concept": concept,
-                "Origin_CS": orig_mean,
+               # "Origin_CS": orig_mean,
                 "Steered_CS": steer_mean
             })
         
@@ -137,7 +348,7 @@ if __name__ == "__main__":
         full_results = pd.concat(all_dfs)
         
         # Calculate Mean across all directory pairs and concepts
-        mean_origin = full_results["Origin_CS"].mean()
+        #mean_origin = full_results["Origin_CS"].mean()
         mean_steered = full_results["Steered_CS"].mean()
         
         # Concept-wise summary
@@ -149,6 +360,6 @@ if __name__ == "__main__":
         print(summary.to_string(index=False))
         
         print("\n" + "="*50)
-        print(f"GRAND TOTAL MEAN ORIGIN CS:  {mean_origin:.2f}")
+        #print(f"GRAND TOTAL MEAN ORIGIN CS:  {mean_origin:.2f}")
         print(f"GRAND TOTAL MEAN STEERED CS: {mean_steered:.2f}")
         print("="*50)

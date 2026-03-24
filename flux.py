@@ -84,12 +84,13 @@ def calculate_shift(
     mu = image_seq_len * m + b
     return mu
 
-def register_attr(model, a, t):
-    print(len(model.transformer.transformer_blocks) + len(model.transformer.single_transformer_blocks))
+def register_attr(model, a, t, scale):
+    #print(len(model.transformer.transformer_blocks) + len(model.transformer.single_transformer_blocks))
     
     for i, block in enumerate(model.transformer.transformer_blocks):
         block.attn.t = t
         block.attn.a = a
+        block.attn.scale = scale
 
         try:
 
@@ -967,7 +968,7 @@ class FluxPipeline(
         #txt_steering = {'vector': torch.load('concrete_big glasses_big glasses_prompts_20_pos_embeddings.pt'), 'strength': 1.0}
         if txt_steering['vector'] is not None:
             pooled_style, seqs_style = steering_txt_data(txt_steering['vector'], txt_steering['strength'], prompt_embeds, mean=False, ssim=True, pooled=True, normed=False)
-            print(pooled_style.shape, seqs_style.shape)
+            #print(pooled_style.shape, seqs_style.shape)
         else:
             assert False
         
@@ -980,8 +981,8 @@ class FluxPipeline(
                 if self.interrupt:
                     continue
 
-                register_attr(self, t=t.item(), a=args['structure_strength'])
-
+                #register_attr(self, t=t.item(), a=args['structure_strength'])
+                
 
                 self._current_timestep = t
                 if image_embeds is not None:
@@ -989,7 +990,8 @@ class FluxPipeline(
                 # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
                 timestep = t.expand(latents.shape[0]).to(latents.dtype)
 
-                new_pooled_embeds, new_prompt_embeds = apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_style, normed=False)
+                new_pooled_embeds, new_prompt_embeds, scale = apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_style, normed=False)
+                register_attr(self, t=t.item(), a=args['structure_strength'], scale=scale)
                 
                 with self.transformer.cache_context("cond"):
                     noise_pred = self.transformer(

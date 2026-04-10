@@ -51,7 +51,19 @@ Edit `scripts/steering_calculate.sh` to point to the `.pt` files produced in Ste
 bash scripts/steering_calculate.sh
 ```
 
-Supports both activation-based vectors (SVM / mean-diff) and text-embedding-based vectors (`--method text`).
+Supports activation-based vectors (SVM / mean-diff) and text-embedding-based vectors (`--method text`).
+
+#### Optimal Transport steering (experimental)
+
+We also provide an OT-based alternative that computes per-token displacement maps
+using Sliced Wasserstein or Sinkhorn transport, preserving the geometry of the
+activation manifold:
+
+```bash
+bash scripts/steering_calculate_ot.sh
+```
+
+Use `--vector_type ot_sw` (or `ot_sinkhorn`) in Step 3 to apply the resulting vectors.
 
 ### Step 3 — Apply steering
 

@@ -118,17 +118,22 @@ def calculate_cls_score(
 
 def apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_style, normed=True, strength=0.0, task='add'):
     #normed = True
+    
 
     if strength != 0.0:
-        
-        scale = F.cosine_similarity(pooled_prompt_embeds.clone() / pooled_prompt_embeds.norm(dim=-1, keepdim=True), pooled_style.clone() / pooled_style.norm(dim=-1, keepdim=True), dim=-1)[0]
-        if task != 'add':
-            scale = -scale
-        print(scale)
-        scale = scale.clip(0,1)
+        if task == 'add concept':
+            scale = 1
+        else:
+            scale = F.cosine_similarity(pooled_prompt_embeds.clone() / pooled_prompt_embeds.norm(dim=-1, keepdim=True), pooled_style.clone() / pooled_style.norm(dim=-1, keepdim=True), dim=-1)[0]
+            if task != 'add concept':
+                scale = -scale
+            assert False
+            
+            scale = scale.clip(0,1)
     else:
         scale = 0.0
 
+    #print(scale, pooled_style.shape, seqs_style.shape)
     
     if not normed:
         new_pooled_embeds = pooled_prompt_embeds + pooled_style * scale
@@ -149,9 +154,20 @@ def apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_s
 
 
 def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=True, ssim=False, pooled=True, normed=True, seq=False, task='add'):
-    seqs_style = vector_txt['sequence'].to(prompt_embeds.dtype).to(prompt_embeds.device).mean(0, keepdim=True) 
-    pooled_style = vector_txt['pooled'].to(prompt_embeds.dtype).to(prompt_embeds.device).mean(0, keepdim=True) 
+    seqs_style = vector_txt['sequence'].to(prompt_embeds.dtype).to(prompt_embeds.device)
+    if len(seqs_style.shape) == 2:
+        seqs_style = seqs_style.unsqueeze(0)
+
+    seqs_style = seqs_style.mean(0, keepdim=True) 
+    pooled_style = vector_txt['pooled'].to(prompt_embeds.dtype).to(prompt_embeds.device)
+    if len(pooled_style.shape) == 1:
+        pooled_style = pooled_style.unsqueeze(0)
+
+    pooled_style = pooled_style.mean(0, keepdim=True) 
     
+    mean = False
+    
+    print(seqs_style.shape, pooled_style.shape, mean)
     if mean:
         seqs_style = seqs_style.mean(1, keepdim=True) 
     if ssim:
@@ -181,11 +197,12 @@ def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=True, ssim=False
         pooled_style = pooled_style * strenght
     else:
         pooled_style = pooled_style * 0.
-
+    seq = True
     if not seq:
         seqs_style = torch.zeros_like(seqs_style).to(pooled_style.device).to(pooled_style.dtype)
 
-    if task != 'add':
+    if task != 'add concept':
+        assert False
         pooled_style = -pooled_style
         seqs_style = -seqs_style
 

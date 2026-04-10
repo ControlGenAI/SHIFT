@@ -56,3 +56,7 @@ coco_images_ablation_5000/
 images_renoise.tar
 unused/
 gpt_style.ipynb
+
+scripts/compare_steering_variants.py
+src/steering/calculate_steering_vectors_ot1.py
+test.sh

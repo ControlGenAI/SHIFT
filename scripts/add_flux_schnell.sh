@@ -261,50 +261,227 @@
 
 
 
+# CUDA_VISIBLE_DEVICES=0, python ./src/steering/apply_steering_with_injection_flux_1.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/add/final_steering/act_txt_meandiff_tokenwise/" \
+#     --task "add concept" \
+#     --strength 20.0 \
+#     --strength_txt 0.0 \
+#     --strength_img 0.0 \
+#     --top_k_percent 0.95 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --injection_point "block" \
+#     --results_dir "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/generated_images/standard/attn/mean_diff" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --vector_type 'ot_sw_v4' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --width 1024 \
+#     --height 1024 \
+#     --prompts_path "/home/jovyan/konovalova/clean_code/steering/prompts_collection/ablation/ablation_prompts_add.txt"
+
+# CUDA_VISIBLE_DEVICES=0, python ./src/steering/apply_steering_with_injection_flux_1.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/add/final_steering/act_txt_meandiff_tokenwise/" \
+#     --task "add concept" \
+#     --strength 20.0 \
+#     --strength_txt 0.0 \
+#     --strength_img 0.0 \
+#     --top_k_percent 0.95 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --injection_point "block" \
+#     --results_dir "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/generated_images/standard/attn/mean_diff" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --vector_type 'ot_sw_v4' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --width 1024 \
+#     --height 1024 \
+#     --prompts_path "/home/jovyan/konovalova/clean_code/steering/prompts_collection/ablation/ablation_prompts_add.txt"
+
+
+# CUDA_VISIBLE_DEVICES=0, python ./src/steering/apply_steering_with_injection_flux_1.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/add/final_steering/act_txt_meandiff_tokenwise/" \
+#     --task "add concept" \
+#     --strength 50.0 \
+#     --strength_txt 0.0 \
+#     --strength_img 0.0 \
+#     --top_k_percent 0.95 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --injection_point "block" \
+#     --results_dir "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/generated_images/standard/attn/mean_diff" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --vector_type 'ot_sw_v4' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --width 1024 \
+#     --height 1024 \
+#     --prompts_path "/home/jovyan/konovalova/clean_code/steering/prompts_collection/ablation/ablation_prompts_add.txt"
+
+
+
+# CUDA_VISIBLE_DEVICES=0, python ./src/steering/apply_steering_with_injection_flux_1.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/test_compare_add/final_steering/act_txt_meandiff_tokenwise_block/" \
+#     --task "add concept" \
+#     --strength 25.0 \
+#     --strength_txt 0.0 \
+#     --strength_img 0.0 \
+#     --top_k_percent 0.95 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --injection_point "block" \
+#     --results_dir "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/generated_images/standard/block/mean_diff" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --vector_type 'ot_sw_v4' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --width 1024 \
+#     --height 1024 \
+#     --prompts_path "/home/jovyan/konovalova/clean_code/steering/prompts_collection/ablation/ablation_prompts_add.txt"
+
+
+
+
+# CUDA_VISIBLE_DEVICES=0, python ./src/steering/apply_steering_with_injection_flux_1.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/test_compare_add/final_steering/act_txt_meandiff_tokenwise_block/" \
+#     --task "add concept" \
+#     --strength 10.0 \
+#     --strength_txt 0.0 \
+#     --strength_img 0.0 \
+#     --top_k_percent 0.95 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --injection_point "block" \
+#     --results_dir "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/generated_images/standard/block/mean_diff" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --vector_type 'ot_sw_v4' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --width 1024 \
+#     --height 1024 \
+#     --prompts_path "/home/jovyan/konovalova/clean_code/steering/prompts_collection/ablation/ablation_prompts_add.txt"
+
+
+
 CUDA_VISIBLE_DEVICES=0, python ./src/steering/apply_steering_with_injection_flux_1.py \
     --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/add/final_steering/md_dual_block" \
+    --data_dir "experiments/flux_schnell/test_compare_add/final_steering/act_txt_meandiff_tokenwise/" \
     --task "add concept" \
-    --strength 25.0 \
+    --strength 1500.0 \
     --strength_txt 0.0 \
     --strength_img 0.0 \
     --top_k_percent 0.95 \
     --min_signal_threshold 0.05 \
     --cls_min 20.0 \
-    --injection_point "block" \
-    --results_dir "experiments/flux_schnell/add/generated_images_dual/glasses_md/25_0_diff_steps_block_mean" \
+    --injection_point "attn" \
+    --results_dir "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/generated_images/standard/attn/mean_diff" \
     --inference_steps 4 \
     --seed 42 \
-    --vector_type 'dual_img-meandiff_txt-meandiff_ot_sinkhorn_v4' \
-    --steering_type 'mean' \
+    --vector_type 'ot_sw_v4' \
+    --steering_type 'separate' \
     --guidance_scale 0.0 \
     --width 1024 \
     --height 1024 \
     --prompts_path "/home/jovyan/konovalova/clean_code/steering/prompts_collection/ablation/ablation_prompts_add.txt"
 
 
-CUDA_VISIBLE_DEVICES=0, python ./src/steering/apply_steering_with_injection_flux_1.py \
-    --model_name "black-forest-labs/FLUX.1-schnell" \
-    --data_dir "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/add/final_steering/md_dual_block" \
-    --task "add concept" \
-    --strength 25.0 \
-    --strength_txt 0.0 \
-    --strength_img 20.0 \
-    --top_k_percent 0.95 \
-    --min_signal_threshold 0.05 \
-    --cls_min 20.0 \
-    --injection_point "block" \
-    --results_dir "experiments/flux_schnell/add/generated_images_dual/glasses_md/25_20_diff_steps_block_mean" \
-    --inference_steps 4 \
-    --seed 42 \
-    --vector_type 'dual_img-meandiff_txt-meandiff_ot_sinkhorn_v4' \
-    --steering_type 'mean' \
-    --guidance_scale 0.0 \
-    --width 1024 \
-    --height 1024 \
-    --prompts_path "/home/jovyan/konovalova/clean_code/steering/prompts_collection/ablation/ablation_prompts_add.txt"
+# CUDA_VISIBLE_DEVICES=0, python ./src/steering/apply_steering_with_injection_flux_1.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/test_compare_add/final_steering/act_txt_meandiff_tokenwise_block/" \
+#     --task "add concept" \
+#     --strength 50.0 \
+#     --strength_txt 0.0 \
+#     --strength_img 0.0 \
+#     --top_k_percent 0.95 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --injection_point "block" \
+#     --results_dir "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/generated_images/standard/block/mean_diff" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --vector_type 'ot_sw_v4' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --width 1024 \
+#     --height 1024 \
+#     --prompts_path "/home/jovyan/konovalova/clean_code/steering/prompts_collection/ablation/ablation_prompts_add.txt"
 
 
+# CUDA_VISIBLE_DEVICES=0, python ./src/steering/apply_steering_with_injection_flux_1.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/test_compare_add/final_steering/act_txt_meandiff_tokenwise/" \
+#     --task "add concept" \
+#     --strength 100.0 \
+#     --strength_txt 0.0 \
+#     --strength_img 0.0 \
+#     --top_k_percent 0.95 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --injection_point "attn" \
+#     --results_dir "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/generated_images/standard/attn/mean_diff" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --vector_type 'ot_sw_v4' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --width 1024 \
+#     --height 1024 \
+#     --prompts_path "/home/jovyan/konovalova/clean_code/steering/prompts_collection/ablation/ablation_prompts_add.txt"
+
+
+# CUDA_VISIBLE_DEVICES=0, python ./src/steering/apply_steering_with_injection_flux_1.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/add/final_steering/act_txt_meandiff_tokenwise_block/" \
+#     --task "add concept" \
+#     --strength 1000.0 \
+#     --strength_txt 0.0 \
+#     --strength_img 0.0 \
+#     --top_k_percent 0.95 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --injection_point "block" \
+#     --results_dir "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/generated_images/standard/block/mean_diff" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --vector_type 'ot_sw_v4' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --width 1024 \
+#     --height 1024 \
+#     --prompts_path "/home/jovyan/konovalova/clean_code/steering/prompts_collection/ablation/ablation_prompts_add.txt"
+
+
+# CUDA_VISIBLE_DEVICES=0, python ./src/steering/apply_steering_with_injection_flux_1.py \
+#     --model_name "black-forest-labs/FLUX.1-schnell" \
+#     --data_dir "experiments/flux_schnell/add/final_steering/act_txt_meandiff_tokenwise_block/" \
+#     --task "add concept" \
+#     --strength 1500.0 \
+#     --strength_txt 0.0 \
+#     --strength_img 0.0 \
+#     --top_k_percent 0.95 \
+#     --min_signal_threshold 0.05 \
+#     --cls_min 20.0 \
+#     --injection_point "block" \
+#     --results_dir "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/generated_images/standard/block/mean_diff" \
+#     --inference_steps 4 \
+#     --seed 42 \
+#     --vector_type 'ot_sw_v4' \
+#     --steering_type 'separate' \
+#     --guidance_scale 0.0 \
+#     --width 1024 \
+#     --height 1024 \
+#     --prompts_path "/home/jovyan/konovalova/clean_code/steering/prompts_collection/ablation/ablation_prompts_add.txt"
 
 
 # CUDA_VISIBLE_DEVICES=0, python ./src/steering/apply_steering_with_injection_flux_1.py \

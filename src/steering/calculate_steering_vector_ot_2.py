@@ -234,8 +234,8 @@ def compute_image_ot(
             if layer not in img_pos[step] or layer not in img_neg[step]:
                 continue
 
-            pos_t = img_pos[step][layer].squeeze(1).to(device).float()
-            neg_t = img_neg[step][layer].squeeze(1).to(device).float()
+            pos_t = img_pos[step][layer]['txt'].squeeze(1).to(device).float()
+            neg_t = img_neg[step][layer]['txt'].squeeze(1).to(device).float()
             n_samples = min(pos_t.size(0), neg_t.size(0), args.n_samples)
 
             disps = []
@@ -271,8 +271,8 @@ def compute_image_meandiff(
             if layer not in img_pos[step] or layer not in img_neg[step]:
                 continue
 
-            pos_t = img_pos[step][layer].to(device).float()
-            neg_t = img_neg[step][layer].to(device).float()
+            pos_t = img_pos[step][layer]['txt'].squeeze(1).to(device).float()
+            neg_t = img_neg[step][layer]['txt'].squeeze(1).to(device).float()
             n = min(pos_t.size(0), neg_t.size(0), args.n_samples)
             disp = (pos_t[:n] - neg_t[:n]).mean(0).cpu()
             out[step][layer] = disp
@@ -353,7 +353,13 @@ def compute_legacy_activation(data_pos, data_neg, args, device):
     """Handle old format: {step: {layer_N: tensor}} — single branch only."""
     # Same as v3 compute_steering_activation
     # Wrap as img-only and delegate
-    return compute_image_ot(data_pos, data_neg, args, device)
+    if args.img_mode == "ot":
+        print("\n--- Image branch (OT) ---")
+        img_result = compute_image_ot(data_pos, data_neg, args, device)
+    else:
+        print("\n--- Image branch (mean-diff) ---")
+        img_result = compute_image_meandiff(data_pos, data_neg, args, device)
+    return img_result
 
 
 def compute_legacy_text(data_pos, data_neg, args, device):

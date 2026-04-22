@@ -75,8 +75,8 @@ python ./src/steering/get_vector_1.py \
     --task "concrete" \
     --pos_concept "glasses" \
     --neg_concept "" \
-    --num_prompts "15" \
-    --extraction_point "block" \
+    --num_prompts 100 \
+    --extraction_point "attn" \
     --num_layers "19" \
     --save_timesteps "4" \
     --height "1024" \
@@ -84,7 +84,8 @@ python ./src/steering/get_vector_1.py \
     --gs "0.0" \
     --num_inference_steps "4" \
     --batch_size 1 \
-    --save_dir "experiments/flux_schnell/add/data_vector_dual_1" \
+    --save_dir "experiments/flux_schnell/test_compare_add/data_vector/data_vector_attn_100" \
     --exp_type "glasses" \
+    --token_stream txt \
     --prompt_path "prompts_collection/dataset_creation/dataset_prompts_add.txt" \
-    --save_image_dir "experiments/flux_schnell/add/dataset_images_dual_block"
+    --save_image_dir "experiments/flux_schnell/test_compare_add/dataset_images/dataset_images_attn_100"

@@ -329,7 +329,8 @@ def apply_attention_steering(pipe, args, vector, idx=None):
                 return output
             if args.t_steering != 'all' and step not in args.t_steering:
                 return output
-
+            
+            print(f"step: {step}, layer_idx: {layer_idx}")
             layer_key, sv_img, sv_txt = _get_layer_vectors(step, layer_idx)
             if sv_img is None and sv_txt is None:
                 return output
@@ -421,6 +422,7 @@ def apply_attention_steering(pipe, args, vector, idx=None):
             if args.t_steering != 'all' and step not in args.t_steering:
                 return output
 
+            print(f"step: {step}, layer_idx: {layer_idx}, branch: {branch}")
             _, sv_img, sv_txt = _get_layer_vectors(step, layer_idx)
             sv = sv_img if branch == "img" else sv_txt
             if sv is None:
@@ -606,12 +608,22 @@ if __name__ == "__main__":
         hook_state, remove_hooks = apply_attention_steering(pipe, args, vector)
         generator = torch.Generator().manual_seed(seed)
 
+        def _on_step_end(_pipe, i, _t, callback_kwargs):
+            # Keep hook step in sync with diffusion loop:
+            # current forward pass uses step i, next pass should see i+1.
+            hook_state.update({"step": int(i) + 1})
+            return callback_kwargs
+
+
         images = pipe(
             prompt, num_inference_steps=args.inference_steps,
             guidance_scale=args.guidance_scale, width=args.width, height=args.height,
             generator=generator, structure_strength=args.structure,
-            callback=lambda step, **k: hook_state.update({"step": step}),
-            callback_steps=1, txt_steering=txt_steering,
+            callback_on_step_end=_on_step_end,
+            callback_on_step_end_tensor_inputs=["latents"],
+            #callback=lambda step, **k: hook_state.update({"step": step}),
+            #callback_steps=1, 
+            txt_steering=txt_steering,
         ).images
         #assert False
         os.makedirs(os.path.join(args.results_dir, 'steered'), exist_ok=True)

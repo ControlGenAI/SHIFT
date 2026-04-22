@@ -18,8 +18,8 @@ Output format:
   {
     step_0: {
       "layer_0": {
-        "img": tensor(n_samples, n_img_tokens, hidden_dim),    # 4096×3072
-        "txt": tensor(n_samples, n_txt_tokens, hidden_dim),    # 512×3072
+        "img": tensor(n_samples, n_img_tokens, hidden_dim),    # if stream in {img,both}
+        "txt": tensor(n_samples, n_txt_tokens, hidden_dim),    # if stream in {txt,both}
       },
       "layer_1": { ... },
       ...
@@ -125,12 +125,14 @@ class DualStreamHookManager:
         num_blocks: int,
         save_blocks: int,
         save_timesteps: int,
+        stream: str = "both",      # "txt" | "img" | "both"
         use_cfg: bool = False,       # whether guidance_scale > 1 (CFG mode)
     ):
         self.extraction_point = extraction_point
         self.num_blocks = num_blocks
         self.save_blocks = save_blocks
         self.save_timesteps = save_timesteps
+        self.stream = stream
         self.use_cfg = use_cfg
         self.data: Dict = {}
         self.reset_state()
@@ -161,6 +163,8 @@ class DualStreamHookManager:
 
     def _store(self, step: int, block_idx: int, branch: str, tensor: torch.Tensor):
         """Store activation tensor for a specific step/block/branch."""
+        if not self._wants_branch(branch):
+            return
         if step not in self.data:
             self.data[step] = {}
         layer_key = f"layer_{block_idx}"
@@ -168,13 +172,18 @@ class DualStreamHookManager:
             self.data[step][layer_key] = {"img": [], "txt": []}
         self.data[step][layer_key][branch].append(tensor.detach().cpu())
 
+    def _wants_branch(self, branch: str) -> bool:
+        if self.stream == "both":
+            return branch in ("img", "txt")
+        return branch == self.stream
+
     def _extract_conditional(self, tensor: torch.Tensor) -> torch.Tensor:
         """
         If CFG is active, batch is [unconditional, conditional].
         We want the conditional half (second half).
         If no CFG (guidance_scale=1), take everything.
         """
-        print(tensor.shape)
+        #print(tensor.shape)
         if self.use_cfg and tensor.shape[0] > 1:
             return tensor[tensor.shape[0] // 2:]
         return tensor
@@ -210,7 +219,7 @@ class DualStreamHookManager:
                     # Single stream or unexpected format — save as img
                     img_attn = output if not isinstance(output, tuple) else output[0]
                     txt_attn = None
-                print(img_attn.shape, txt_attn.shape, block_idx, self.current_step)
+                #img_attn.shape, txt_attn.shape, block_idx, self.current_step)
                 img_attn = self._extract_conditional(img_attn)
                 self._store(self.current_step, block_idx, "img", img_attn)
                 if txt_attn is not None:
@@ -257,6 +266,8 @@ class DualStreamHookManager:
                 for branch, tensor_list in branches.items():
                     if tensor_list:
                         result[step][layer_key][branch] = torch.stack(tensor_list)
+            # print(result[step][layer_key].keys())
+            # assert False
         return result
 
 
@@ -350,6 +361,7 @@ def run_extraction(pipe, prompts, args) -> Tuple[Dict, List]:
         num_blocks=args.num_layers,
         save_blocks=args.num_layers,
         save_timesteps=args.save_timesteps,
+        stream=args.token_stream,
         use_cfg=use_cfg,
     )
 
@@ -430,6 +442,9 @@ if __name__ == '__main__':
                              "'norm1' = post-LayerNorm pre-attention (on sphere), "
                              "'norm2' = post-LayerNorm pre-MLP, "
                              "'ff' = post-MLP")
+    parser.add_argument('--token_stream', type=str, default='both',
+                        choices=['txt', 'img', 'both'],
+                        help="Which token stream(s) to save: txt, img, or both")
     parser.add_argument('--num_layers', type=int, default=19,
                         help="Number of double-stream blocks to hook (FLUX.1-dev has 19)")
     parser.add_argument('--save_timesteps', type=int, default=4,

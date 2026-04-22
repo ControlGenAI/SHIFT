@@ -245,16 +245,31 @@
 #     --data_type "dual" \
 #     --save_dir "experiments/flux_schnell/add/final_steering/md_dual"
 
+# CUDA_VISIBLE_DEVICES=0 python ./src/steering/calculate_steering_vector_ot_2.py \
+#     --neg_path "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/data_vector/data_vector_attn/glasses__gs_0.0_prompts_20_neg_attn.pt" \
+#     --pos_path "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/data_vector/data_vector_attn/glasses__gs_0.0_prompts_20_pos_attn.pt" \
+#     --method sw \
+#     --txt_mode "meandiff" \
+#     --img_mode "meandiff" \
+#     --timesteps 4 \
+#     --blocks 19 \
+#     --n_samples 20 \
+#     --epsilon 0.05 \
+#     --threshold 0.85 \
+#     --data_type "activation" \
+#     --save_dir "experiments/flux_schnell/test_compare_add/final_steering/act_txt_meandiff_tokenwise"
+
+
 CUDA_VISIBLE_DEVICES=0 python ./src/steering/calculate_steering_vector_ot_2.py \
-    --neg_path "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/add/data_vector_dual_1/glasses__gs_0.0_prompts_15_neg_block.pt" \
-    --pos_path "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/add/data_vector_dual_1/glasses__gs_0.0_prompts_15_pos_block.pt" \
-    --method sinkhorn \
-    --img_mode "meandiff" \
+    --neg_path "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/data_vector/data_vector_block/glasses__gs_0.0_prompts_20_neg_block.pt" \
+    --pos_path "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/data_vector/data_vector_block/glasses__gs_0.0_prompts_20_pos_block.pt" \
+    --method sw \
     --txt_mode "meandiff" \
+    --img_mode "meandiff" \
     --timesteps 4 \
     --blocks 19 \
     --n_samples 20 \
     --epsilon 0.05 \
     --threshold 0.85 \
-    --data_type "dual" \
-    --save_dir "experiments/flux_schnell/add/final_steering/md_dual_block"
+    --data_type "activation" \
+    --save_dir "experiments/flux_schnell/test_compare_add/final_steering/act_txt_meandiff_tokenwise_block"

@@ -60,3 +60,5 @@ gpt_style.ipynb
 scripts/compare_steering_variants.py
 src/steering/calculate_steering_vectors_ot1.py
 test.sh
+
+*.pt

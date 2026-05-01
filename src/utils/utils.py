@@ -67,11 +67,13 @@ def calculate_cls_score(
     """
     #print(cls_min)
     if not use_distance:
+        print(a.shape)
         a = (a / a.norm(dim=-1))#.mean(1)
         # a = model['scaler'].transform(a)
         # a = model['pca'].transform(a)
         score_cls = model.predict_proba(a)  if model is not None else np.array([[0.5, 0.5]])
         if task == 'add concept':
+            assert False
             scoreeee =  min(cls_min, (1 / ((1 - score_cls[0][0]) + 1e-8) - 1)) # 21 * score_cls[0][1]**2
             #print(score_cls, scoreeee)
         else:
@@ -116,6 +118,205 @@ def calculate_cls_score(
     return final_score, prob_score, distance
 
 
+def _to_pooled_device_dtype(t: torch.Tensor, ref: torch.Tensor) -> torch.Tensor:
+    return t.to(device=ref.device, dtype=ref.dtype)
+
+
+def _get_pooled_steering_payload_tensor(
+    vector_txt: Dict[str, Any], key: str, alts: Tuple[str, ...], ref: torch.Tensor
+) -> torch.Tensor:
+    for k in (key,) + alts:
+        if k in vector_txt and torch.is_tensor(vector_txt[k]):
+            return _to_pooled_device_dtype(vector_txt[k], ref)
+    raise KeyError(f"pooled steering payload missing {key!r} (tried {alts})")
+
+
+def pooled_steering_mode(vector_txt: Any) -> str:
+    """
+    Advanced pooled steering only when explicitly requested on the vector dict:
+      pooled_steering_mode in ('subspace_mean', 'monge').
+    Any other value (including missing / 'raw' / 'legacy') → 'raw' = обычный стиринг
+    через steering_txt_data + apply_txt_steering.
+    """
+    if not isinstance(vector_txt, dict):
+        return "raw"
+    mode = vector_txt.get("pooled_steering_mode", "raw")
+    if mode in ("subspace_mean", "monge"):
+        return str(mode)
+    return "raw"
+
+
+def use_pooled_advanced_txt_steering(txt_steering: Dict[str, Any], vector: Any) -> bool:
+    """
+    True только для явного advanced-режима. Иначе всегда legacy (pooled+sequence в vector).
+    Принудительно legacy: txt_steering['legacy_txt_steering'] == True.
+    """
+    if txt_steering.get("legacy_txt_steering", False):
+        return False
+    if not isinstance(vector, dict):
+        return False
+    return vector.get("pooled_steering_mode") in ("subspace_mean", "monge")
+
+
+def compute_pooled_steering_delta_advanced(
+    pooled_b_c: torch.Tensor,
+    vector_txt: Dict[str, Any],
+    strength: float,
+    task: str,
+) -> torch.Tensor:
+    """
+    Δ pooled (B, C) for subspace mean-diff or Monge transport in a low-d subspace.
+
+    vector_txt keys (tensors, same C as pooled; d = subspace dim):
+      - pooled_steering_mode: 'subspace_mean' | 'monge'
+      - mu_neg: (C,)  anchor in full space (also tries mu_neg_anchor)
+      - V_d: (C, d)  orthonormal columns (tries V)
+
+    subspace_mean additionally:
+      - delta_z: (d,) mean-diff direction in z-space (tries mean_diff_delta_z_global / mean_diff_delta_z_train)
+
+    monge additionally:
+      - mu_neg_z, mu_pos_z: (d,)
+      - M: (d, d)
+    """
+    mode = pooled_steering_mode(vector_txt)
+    if mode == "raw":
+        raise ValueError("compute_pooled_steering_delta_advanced: mode is raw")
+
+    ref = pooled_b_c
+    mu_neg = _get_pooled_steering_payload_tensor(vector_txt, "mu_neg", ("mu_neg_anchor",), ref)
+    V = _get_pooled_steering_payload_tensor(vector_txt, "V_d", ("V",), ref)
+
+    if mu_neg.dim() != 1:
+        raise ValueError(f"mu_neg must be (C,), got {tuple(mu_neg.shape)}")
+    if V.dim() != 2 or V.shape[0] != mu_neg.shape[0]:
+        raise ValueError(f"V_d must be (C, d), C={mu_neg.shape[0]}, got {tuple(V.shape)}")
+
+    if mode == "subspace_mean":
+        delta_z = None
+        for k in ("delta_z", "mean_diff_delta_z_global", "mean_diff_delta_z_train"):
+            if k in vector_txt and torch.is_tensor(vector_txt[k]):
+                delta_z = _to_pooled_device_dtype(vector_txt[k], ref)
+                break
+        if delta_z is None:
+            raise KeyError("subspace_mean: need delta_z or mean_diff_delta_z_* (d,) tensor")
+        if delta_z.dim() != 1 or delta_z.shape[0] != V.shape[1]:
+            raise ValueError(f"delta_z must be (d,) with d={V.shape[1]}, got {tuple(delta_z.shape)}")
+        if task != "add concept":
+            delta_z = -delta_z
+        delta_c = V @ (delta_z * float(strength))
+        return delta_c.unsqueeze(0).expand_as(pooled_b_c)
+
+    # monge
+    mu_neg_z = _get_pooled_steering_payload_tensor(vector_txt, "mu_neg_z", (), ref)
+    mu_pos_z = _get_pooled_steering_payload_tensor(vector_txt, "mu_pos_z", (), ref)
+    M = _get_pooled_steering_payload_tensor(vector_txt, "M", (), ref)
+    if mu_neg_z.dim() != 1 or mu_pos_z.dim() != 1:
+        raise ValueError("mu_neg_z / mu_pos_z must be (d,) vectors")
+    if M.dim() != 2 or M.shape[0] != M.shape[1]:
+        raise ValueError(f"M must be (d, d), got {tuple(M.shape)}")
+    d = V.shape[1]
+    if mu_neg_z.shape[0] != d or mu_pos_z.shape[0] != d or M.shape[0] != d:
+        raise ValueError(f"Monge dims mismatch: d={d}, mu_neg_z {tuple(mu_neg_z.shape)}, M {tuple(M.shape)}")
+
+    z = (pooled_b_c - mu_neg) @ V
+    z_tgt = mu_pos_z + (z - mu_neg_z) @ M.T
+    delta_z = z_tgt - z
+    if task != "add concept":
+        delta_z = -delta_z
+    delta_z = delta_z * float(strength)
+    return delta_z @ V.T
+
+
+def apply_txt_steering_pooled_advanced(
+    pooled_prompt_embeds: torch.Tensor,
+    prompt_embeds: torch.Tensor,
+    vector_txt: Dict[str, Any],
+    normed: bool = True,
+    strength: float = 1.0,
+    task: str = "add concept",
+) -> Tuple[torch.Tensor, torch.Tensor, Union[float, torch.Tensor]]:
+    """
+    Pooled-only steering using a fixed low-d subspace (mean-diff) or Monge map.
+    Sequence branch is zeros; same scale / norm behavior as apply_txt_steering.
+    """
+    seqs_style = torch.zeros_like(prompt_embeds)
+    delta_pooled = compute_pooled_steering_delta_advanced(
+        pooled_prompt_embeds, vector_txt, strength=strength, task=task
+    )
+    return apply_txt_steering(
+        pooled_prompt_embeds,
+        prompt_embeds,
+        delta_pooled,
+        seqs_style,
+        normed=normed,
+        strength=strength,
+        task=task,
+    )
+
+
+def apply_txt_steering_auto(
+    pooled_prompt_embeds: torch.Tensor,
+    prompt_embeds: torch.Tensor,
+    vector_txt: Any,
+    *,
+    strength: float = 1.0,
+    task: str = "add concept",
+    normed: bool = False,
+    legacy_txt_steering: bool = False,
+) -> Tuple[torch.Tensor, torch.Tensor, Union[float, torch.Tensor]]:
+    """
+    Unified text steering entrypoint.
+
+    - Advanced pooled OT/low-d path when vector_txt["pooled_steering_mode"] in
+      {"subspace_mean", "monge"} and legacy_txt_steering is False.
+    - Otherwise legacy path (sequence+pooled mean-diff) via steering_txt_data.
+    """
+    if vector_txt is None:
+        zero_seq = torch.zeros_like(prompt_embeds)
+        return apply_txt_steering(
+            pooled_prompt_embeds,
+            prompt_embeds,
+            torch.zeros_like(pooled_prompt_embeds),
+            zero_seq,
+            normed=normed,
+            strength=strength,
+            task=task,
+        )
+
+    mode = pooled_steering_mode(vector_txt)
+    if (not legacy_txt_steering) and mode in ("subspace_mean", "monge"):
+        return apply_txt_steering_pooled_advanced(
+            pooled_prompt_embeds,
+            prompt_embeds,
+            vector_txt,
+            normed=normed,
+            strength=strength,
+            task=task,
+        )
+
+    pooled_style, seqs_style = steering_txt_data(
+        vector_txt,
+        strength,
+        prompt_embeds,
+        mean=True,
+        ssim=False,
+        pooled=True,
+        normed=normed,
+        task=task,
+        seq=False,
+    )
+    return apply_txt_steering(
+        pooled_prompt_embeds,
+        prompt_embeds,
+        pooled_style,
+        seqs_style,
+        normed=normed,
+        strength=strength,
+        task=task,
+    )
+
+
 def apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_style, normed=True, strength=0.0, task='add'):
     #normed = True
     
@@ -127,7 +328,9 @@ def apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_s
             scale = F.cosine_similarity(pooled_prompt_embeds.clone() / pooled_prompt_embeds.norm(dim=-1, keepdim=True), pooled_style.clone() / pooled_style.norm(dim=-1, keepdim=True), dim=-1)[0]
             if task != 'add concept':
                 scale = -scale
-            assert False
+            #assert False
+
+            print('--------------------------------', scale, '-------')
             
             scale = scale.clip(0,1)
     else:
@@ -154,6 +357,7 @@ def apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_s
 
 
 def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=True, ssim=False, pooled=True, normed=True, seq=False, task='add'):
+    mean = False
     seqs_style = vector_txt['sequence'].to(prompt_embeds.dtype).to(prompt_embeds.device)
     if len(seqs_style.shape) == 2:
         seqs_style = seqs_style.unsqueeze(0)
@@ -165,7 +369,7 @@ def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=True, ssim=False
 
     pooled_style = pooled_style.mean(0, keepdim=True) 
     
-    mean = False
+    
     
     print(seqs_style.shape, pooled_style.shape, mean)
     if mean:
@@ -197,15 +401,17 @@ def steering_txt_data(vector_txt, strenght, prompt_embeds, mean=True, ssim=False
         pooled_style = pooled_style * strenght
     else:
         pooled_style = pooled_style * 0.
-    seq = True
+
     if not seq:
+        
         seqs_style = torch.zeros_like(seqs_style).to(pooled_style.device).to(pooled_style.dtype)
 
     if task != 'add concept':
-        assert False
+        print('aaaaaaaaaaaaaa')
         pooled_style = -pooled_style
         seqs_style = -seqs_style
 
+    print(pooled_style.shape, seqs_style.sum())
     return pooled_style, seqs_style
 
 def load_steering_data(

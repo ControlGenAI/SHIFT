@@ -123,8 +123,10 @@ class SteeringEngine:
             mask, weight = 1.0, 1.0
 
         # 3. Task Logic
-        if args.task == 'remove':
+        if args.task == 'remove' or args.task == 'nudity':
             if vector_is_dense_per_token(args.vector_type) or args.steering_type == 'mean':
+                print(f"score_val shape: {score_val}", args.strength)
+                #assert False
                 adjustment = args.strength * weight * v_steer.to(activations.dtype) * mask * score_val
             else:
                 score_val = score_val.unsqueeze(1)
@@ -258,9 +260,9 @@ def apply_attention_steering(pipe, args, vector, idx=None):
 
     # Load auxiliary data
     eigen_path = os.path.join(args.data_dir, "cos_sep.pt")
-    svm_path = os.path.join(args.data_dir, "base_0.85_20_svm_models.pt")
-    scr_path = os.path.join(args.data_dir, "base_0.85_20_scores.pt")
-    tok_path = os.path.join(args.data_dir, "base_0.85_20_tokens.pt")
+    svm_path = os.path.join(args.data_dir, "base_0.85_135_svm_models.pt")
+    scr_path = os.path.join(args.data_dir, "base_0.85_135_scores.pt")
+    tok_path = os.path.join(args.data_dir, "base_0.85_135_tokens.pt")
 
     models, tokens_best, scores_all, quantiles = load_steering_data(
         svm_path, scr_path, tok_path, args.quantile_level
@@ -282,7 +284,7 @@ def apply_attention_steering(pipe, args, vector, idx=None):
         if args.use_cls and models:
             ensemble = models.get(step, {}).get(f"layer_{layer_idx}")
             if ensemble:
-                mean_act = to_modify.mean(0, keepdim=True)
+                mean_act = to_modify.mean(0).mean(0, keepdim=True)#, keepdim=True)
                 mean_act = mean_act / (mean_act.norm(dim=-1, keepdim=True) + 1e-6)
                 votes = [
                     calculate_cls_score(
@@ -332,6 +334,7 @@ def apply_attention_steering(pipe, args, vector, idx=None):
             
             print(f"step: {step}, layer_idx: {layer_idx}")
             layer_key, sv_img, sv_txt = _get_layer_vectors(step, layer_idx)
+            #print(layer_key, sv_img, sv_txt.shape)
             if sv_img is None and sv_txt is None:
                 return output
 
@@ -396,7 +399,9 @@ def apply_attention_steering(pipe, args, vector, idx=None):
 
                 if sv_txt is not None:
                     txt_to_modify = txt_hidden.clone()
+                    #print(step, layer_idx)
                     score_val = _get_score_val(step, layer_idx, txt_to_modify, models, scores_all, eigen_info, cfg, args)
+                    #print(score_val, txt_to_modify.shape, sv_txt.shape)
                     txt_new = _apply_to_branch(txt_to_modify, sv_txt, args, score_val, args.strength)
 
                 if sv_img is not None:
@@ -587,12 +592,14 @@ if __name__ == "__main__":
         coco_prompts = [sample["prompt"] for sample in dataset]
         coco_seeds = [int(sample["sd_seed"]) for sample in dataset]
     else:
-        coco_seeds = [int(args.seed) for _ in range(len(coco_prompts))]
-
+        #coco_seeds = [int(args.seed) for _ in range(len(coco_prompts))]
+        with open('/home/jovyan/konovalova/steering/coco_seeds.txt', "r") as f:
+            coco_seeds = [line.strip() for line in f if line.strip()][:]
     # --- Generate ---
+    names = []
     for idx, prompt in enumerate(coco_prompts):
-        if args.task == 'remove':
-            prompt = prompt + " " + args.remove_prompt
+        # if args.task == 'remove':
+        #     prompt = prompt + " " + args.remove_prompt
 
         sanitized = prompt.replace(" ", "_").replace("/", "").replace(",", "")[:50]
         suffix = f"s_{args.strength}_simg_{args.strength_img}_mask_{args.use_ssim_mask}_v_{args.vector_type}"
@@ -600,6 +607,7 @@ if __name__ == "__main__":
         out_path = os.path.join(args.results_dir, 'steered', f"{idx:02d}_{sanitized}_{suffix}.png")
         if os.path.exists(out_path):
             #assert False
+            names.append(f"{idx:02d}_{sanitized}_{suffix}.png")
             continue
 
         seed = int(coco_seeds[idx])
@@ -611,7 +619,7 @@ if __name__ == "__main__":
         def _on_step_end(_pipe, i, _t, callback_kwargs):
             # Keep hook step in sync with diffusion loop:
             # current forward pass uses step i, next pass should see i+1.
-            hook_state.update({"step": int(i) + 1})
+            hook_state.update({"step": 0})
             return callback_kwargs
 
 
@@ -628,6 +636,7 @@ if __name__ == "__main__":
         #assert False
         os.makedirs(os.path.join(args.results_dir, 'steered'), exist_ok=True)
         try:
+            print('we saved image', out_path)
             images[0].save(out_path)
         except Exception as exc:
             print(f"Save failed idx {idx}: {exc}")
@@ -637,5 +646,10 @@ if __name__ == "__main__":
             images[1].save(os.path.join(args.results_dir, 'origin', f"{idx:02d}_orig.png"))
 
         remove_hooks()
+        # assert False
+    print(len(names))
+    print('==============================================')
+    torch.save(names, os.path.join("named_prompts_block_35.pt"))
+        #assert False
         # if idx >= 5:
         #     assert False

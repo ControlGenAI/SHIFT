@@ -44,7 +44,12 @@ from diffusers.utils.torch_utils import randn_tensor
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from diffusers.pipelines.flux.pipeline_output import FluxPipelineOutput
 
-from src.utils.utils import steering_txt_data, apply_txt_steering
+from src.utils.utils import (
+    apply_txt_steering,
+    apply_txt_steering_pooled_advanced,
+    steering_txt_data,
+    use_pooled_advanced_txt_steering,
+)
 if is_torch_xla_available():
     import torch_xla.core.xla_model as xm
 
@@ -958,7 +963,6 @@ class FluxPipeline(
                 device,
                 batch_size * num_images_per_prompt,
             )
-        print("txt_steering", txt_steering)
 
         # 6. Denoising loop
         # We set the index here to remove DtoH sync, helpful especially during compilation.
@@ -966,16 +970,53 @@ class FluxPipeline(
         # if photo is None:
         #latents = torch.cat([latents]*2)
         #txt_steering = {'vector': torch.load('concrete_big glasses_big glasses_prompts_20_pos_embeddings.pt'), 'strength': 1.0}
-       
-        if txt_steering['vector'] is not None:
-            pooled_style, seqs_style = steering_txt_data(txt_steering['vector'], txt_steering['strength'], prompt_embeds, mean=True, ssim=False, pooled=False, normed=False, task=txt_steering['task'], seq=False)
-            #print(pooled_style.shape, seqs_style.shape)
+        txt_vector_entries = None
+        use_pooled_advanced = False
+        if txt_steering.get("vectors"):
+            txt_vector_entries = []
+            for entry in txt_steering["vectors"]:
+                v = entry.get("vector")
+                if v is None:
+                    continue
+                strength = entry.get("strength", txt_steering.get("strength", 1.0))
+                task_t = entry.get("task", txt_steering.get("task", "add concept"))
+                ps, ss = steering_txt_data(
+                    v,
+                    strength,
+                    prompt_embeds,
+                    mean=True,
+                    ssim=False,
+                    pooled=True,
+                    normed=False,
+                    task=task_t,
+                    seq=False,
+                )
+                txt_vector_entries.append((entry, ps, ss))
+            if len(txt_vector_entries) == 0:
+                txt_vector_entries = None
+        elif txt_steering.get("vector") is not None:
+            vec = txt_steering["vector"]
+            # По умолчанию — обычный стиринг (steering_txt_data). Advanced только при
+            # vector['pooled_steering_mode'] in ('subspace_mean','monge'), либо принудительно
+            # выключить advanced: txt_steering['legacy_txt_steering'] = True
+            use_pooled_advanced = use_pooled_advanced_txt_steering(txt_steering, vec)
+            if not use_pooled_advanced:
+                pooled_style, seqs_style = steering_txt_data(
+                    vec,
+                    txt_steering.get("strength", 1.0),
+                    prompt_embeds,
+                    mean=True,
+                    ssim=False,
+                    pooled=True,
+                    normed=False,
+                    task=txt_steering.get("task", "add concept"),
+                    seq=False,
+                )
+            else:
+                pooled_style, seqs_style = 0, 0
         else:
-            
-        
             pooled_style, seqs_style = 0, 0
-        
-        
+
         self.scheduler.set_begin_index(0)
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
@@ -987,7 +1028,55 @@ class FluxPipeline(
                 # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
                 timestep = t.expand(latents.shape[0]).to(latents.dtype)
 
-                new_pooled_embeds, new_prompt_embeds, scale = apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_style, normed=False, strength=txt_steering['strength'], task=txt_steering['task'])
+                if txt_vector_entries is not None:
+                    new_pooled_embeds = pooled_prompt_embeds
+                    new_prompt_embeds = prompt_embeds
+                    scale = 0.0
+                    for entry, ps, ss in txt_vector_entries:
+                        strength = entry.get("strength", txt_steering.get("strength", 1.0))
+                        task_t = entry.get("task", txt_steering.get("task", "add concept"))
+                        np_e, ne_e, sc = apply_txt_steering(
+                            pooled_prompt_embeds,
+                            prompt_embeds,
+                            ps,
+                            ss,
+                            normed=False,
+                            strength=strength,
+                            task=task_t,
+                        )
+                        new_pooled_embeds = new_pooled_embeds + (np_e - pooled_prompt_embeds)
+                        new_prompt_embeds = new_prompt_embeds + (ne_e - prompt_embeds)
+                        scale = sc
+                elif txt_steering.get("vector") is not None:
+                    if use_pooled_advanced:
+                        new_pooled_embeds, new_prompt_embeds, scale = apply_txt_steering_pooled_advanced(
+                            pooled_prompt_embeds,
+                            prompt_embeds,
+                            txt_steering["vector"],
+                            normed=False,
+                            strength=txt_steering.get("strength", 1.0),
+                            task=txt_steering.get("task", "add concept"),
+                        )
+                    else:
+                        new_pooled_embeds, new_prompt_embeds, scale = apply_txt_steering(
+                            pooled_prompt_embeds,
+                            prompt_embeds,
+                            pooled_style,
+                            seqs_style,
+                            normed=False,
+                            strength=txt_steering.get("strength", 1.0),
+                            task=txt_steering.get("task", "add concept"),
+                        )
+                else:
+                    new_pooled_embeds, new_prompt_embeds, scale = apply_txt_steering(
+                        pooled_prompt_embeds,
+                        prompt_embeds,
+                        pooled_style,
+                        seqs_style,
+                        normed=False,
+                        strength=txt_steering.get("strength", 1.0),
+                        task=txt_steering.get("task", "add concept"),
+                    )
                 register_attr(self, t=t.item(), a=args['structure_strength'], scale=scale)
                 
                 with self.transformer.cache_context("cond"):

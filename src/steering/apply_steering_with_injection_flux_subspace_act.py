@@ -249,6 +249,29 @@ def _transport_subspace(z: torch.Tensor, payload: dict) -> torch.Tensor:
 #         out = x + eff_alpha.view(-1, 1, 1) * delta_view
 #     return out.to(orig_dtype)
 
+def _calculate_concept_subspace_ratio(to_modify, payload):
+    U = payload["U"].to(to_modify.device).float()       # (C, d)
+    mu_neg = payload["mu_neg"].to(to_modify.device).float()  # (C,)
+    
+    flat = to_modify.reshape(-1, to_modify.shape[-1]).float()  # (T, C)
+    centered = flat - mu_neg                                    # (T, C)
+    
+    # Проекция на концептное подпространство
+    z = centered @ U                                    # (T, d)
+    proj = z @ U.T                                      # (T, C) — компонента в span(U)
+    
+    # Норма проекции и норма исходного вектора
+    proj_norm = proj.norm(dim=-1)                       # (T,)
+    total_norm = centered.norm(dim=-1).clamp(min=1e-8)  # (T,)
+    
+    # Score для каждого токена
+    token_scores = proj_norm / total_norm               # (T,) — от 0 до 1
+    
+    # Агрегируем по токенам — среднее
+    score = token_scores.mean()                         # скаляр
+    
+    return score, token_scores                          # скаляр + (T,) для детального анализа
+
 def _apply_subspace_steering(
     to_modify,
     payload,
@@ -284,7 +307,8 @@ def _apply_subspace_steering(
         and payload.get("method") == "subspace_meandiff"
         and flat.shape[0] >= 2
     ):
-        act_centered = flat - flat.mean(dim=0, keepdim=True)
+        assert False
+        act_centered = flat #- flat.mean(dim=0, keepdim=True)
         _, _, v_t = torch.linalg.svd(act_centered, full_matrices=False)
         k_eff = min(
             int(meandiff_neutral_k),
@@ -295,8 +319,15 @@ def _apply_subspace_steering(
             u_neutral = v_t[:k_eff].T.contiguous()
             delta_flat = delta_flat - (delta_flat @ u_neutral) @ u_neutral.T
 
+    score, token_scores = _calculate_concept_subspace_ratio(to_modify, payload)
+    #print(f"score: {score}", token_scores.shape)
+
     score_scalar = score_val.float().mean()
+    print(score_val)
     eff_alpha = alpha * score_scalar
+
+    if args.task == 'remove' or args.task == 'nudity':
+        eff_alpha = -eff_alpha
 
     steered = to_modify.float() + eff_alpha * delta_flat.reshape(orig_shape)
 
@@ -387,9 +418,9 @@ def apply_attention_steering(pipe, args, vector):
     print(f"  Steering branches: img={'YES' if has_img else 'NO'}, txt={'YES' if has_txt else 'NO'}")
 
     eigen_path = os.path.join(args.data_dir, "cos_sep.pt")
-    svm_path = os.path.join(args.data_dir, "base_0.85_20_svm_models.pt")
-    scr_path = os.path.join(args.data_dir, "base_0.85_20_scores.pt")
-    tok_path = os.path.join(args.data_dir, "base_0.85_20_tokens.pt")
+    svm_path = os.path.join(args.data_dir, "base_0.85_135_svm_models.pt")
+    scr_path = os.path.join(args.data_dir, "base_0.85_135_scores.pt")
+    tok_path = os.path.join(args.data_dir, "base_0.85_135_tokens.pt")
 
     models, tokens_best, scores_all, quantiles = load_steering_data(
         svm_path, scr_path, tok_path, args.quantile_level
@@ -410,7 +441,9 @@ def apply_attention_steering(pipe, args, vector):
         if args.use_cls and models:
             ensemble = models.get(step, {}).get(f"layer_{layer_idx}")
             if ensemble:
-                mean_act = to_modify.mean(0, keepdim=True)
+                # Classifier expects a single feature vector [1, C].
+                # to_modify can be (T, C) or (B, T, C), so pool all token/batch rows.
+                mean_act = to_modify.float().reshape(-1, to_modify.shape[-1]).mean(0, keepdim=True)
                 mean_act = mean_act / (mean_act.norm(dim=-1, keepdim=True) + 1e-6)
                 votes = [
                     calculate_cls_score(
@@ -420,6 +453,8 @@ def apply_attention_steering(pipe, args, vector):
                     if current_signal[i] > args.min_signal_threshold else 1.0
                     for i, m in enumerate(ensemble)
                 ]
+                print(votes)
+                # False    
                 score_val = torch.tensor(votes).to(to_modify.device, to_modify.dtype)
                 score_val = torch.mean(score_val, dim=0, keepdim=True)
         return score_val
@@ -514,6 +549,8 @@ def apply_attention_steering(pipe, args, vector):
                         state, args, step, layer_idx, "txt", txt_to_modify
                     )
                     score_val = _get_score_val(step, layer_idx, txt_to_modify, models, scores_all, eigen_info, cfg, args)
+                    print(score_val)
+                    #assert False
                     txt_new = _apply_subspace_steering(
                         txt_to_modify,
                         payload_txt,
@@ -625,7 +662,7 @@ if __name__ == "__main__":
     parser.add_argument("--quantile_level", type=float, default=0.5)
 
     parser.add_argument("--steer_txt", action="store_true")
-    parser.add_argument("--strength_txt", type=float, default=2.0)
+    parser.add_argument("--strength_txt", type=float, default=0.0)
     parser.add_argument("--inference_steps", type=int, default=4)
     parser.add_argument("--guidance_scale", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=42)
@@ -704,13 +741,17 @@ if __name__ == "__main__":
             raise RuntimeError(f"Cannot derive prefix from '{vector_name}'")
         prefix = prefix.rstrip("_")
         expected_txt_names = [
-            f"{prefix}_text_{args.vector_type}.pt",
-            f"{prefix}text_{args.vector_type}.pt",
+            f"{prefix}_text_diff.pt",
+            # f"{prefix}text_}.pt",
         ]
         txt_candidates = [
             os.path.join(args.data_dir, n) for n in expected_txt_names
             if os.path.exists(os.path.join(args.data_dir, n))
         ]
+        txt_candidates = [
+            os.path.join(args.data_dir, f"base_0.85_20_text_diff.pt",)
+        ]
+        print(txt_candidates)
         if txt_candidates:
             vector_txt = torch.load(txt_candidates[0], map_location="cpu")
             print(f"Text encoder vector: {txt_candidates[0]}")
@@ -734,24 +775,29 @@ if __name__ == "__main__":
         coco_prompts = [sample["prompt"] for sample in dataset]
         coco_seeds = [int(sample["sd_seed"]) for sample in dataset]
     else:
-        coco_seeds = [int(args.seed) for _ in range(len(coco_prompts))]
-
+        with open('/home/jovyan/konovalova/steering/coco_seeds.txt', "r") as f:
+            coco_seeds = [line.strip() for line in f if line.strip()][:]
+        #coco_seeds = [int(args.seed) for _ in range(len(coco_prompts))]
+    named_prompts = []
     for idx, prompt in enumerate(coco_prompts):
-        if args.task == "remove":
-            prompt = prompt + " " + args.remove_prompt
-
+        # if args.task == "remove":
+        #     prompt = prompt + " " + args.remove_prompt
+        
         sanitized = prompt.replace(" ", "_").replace("/", "").replace(",", "")[:50]
         suffix = (
             f"s_{args.strength}_simg_{args.strength_img}_"
             f"ltxt_{args.transport_lambda_txt}_limg_{args.transport_lambda_img}_"
             f"v_{args.vector_type}"
         )
+
         out_path = os.path.join(args.results_dir, "steered", f"{idx:02d}_{sanitized}_{suffix}.png")
         if os.path.exists(out_path):
+            named_prompts.append(f"{idx:02d}_{sanitized}_{suffix}.png")
             continue
 
         seed = int(coco_seeds[idx])
-        print(f"{idx + 1}/{len(coco_prompts)}: {prompt[:60]}... seed={seed}")
+
+        print(f"{idx + 1}/{len(coco_prompts)}: {prompt[:]}... seed={seed}")
         hook_state, remove_hooks = apply_attention_steering(pipe, args, vector)
         if args.dump_baseline_activations:
             hook_state["__dump_baseline_path__"] = args.dump_baseline_activations
@@ -763,7 +809,7 @@ if __name__ == "__main__":
         def _on_step_end(_pipe, i, _t, callback_kwargs):
             # Keep hook step in sync with diffusion loop:
             # current forward pass uses step i, next pass should see i+1.
-            hook_state.update({"step": int(i) + 1})
+            hook_state.update({"step": 0})
             return callback_kwargs
 
         images = pipe(
@@ -822,3 +868,8 @@ if __name__ == "__main__":
             print(f"Saved baseline activations (activation-archive layout): {args.dump_baseline_activations}")
         remove_hooks()
         #assert False
+    print(len(named_prompts))
+
+    print('==============================================')
+    torch.save(named_prompts, os.path.join("named_prompts_block_13_neutral_k_1.pt"))
+        

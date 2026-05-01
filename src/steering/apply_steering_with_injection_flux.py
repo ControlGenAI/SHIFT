@@ -8,17 +8,12 @@ from typing import Dict, List, Tuple, Union, Optional
 from datasets import load_dataset
 import sys
 from pathlib import Path
-STEERING_ROOT = Path(__file__).resolve().parents[2]
+STEERING_ROOT = Path(__file__).resolve().parents[2] 
 if str(STEERING_ROOT) not in sys.path:
     sys.path.insert(0, str(STEERING_ROOT))
 from src.models.sd_3 import StableDiffusion3Pipeline
 from src.models.flux import FluxPipeline
 from src.utils.utils import calculate_cls_score
-
-
-def vector_is_dense_per_token(vector_type: str) -> bool:
-    """True for mean-diff and OT steering tensors (per-token, like diff)."""
-    return vector_type == "diff" or vector_type.startswith("ot_")
 
 
 def load_steering_data(
@@ -31,8 +26,8 @@ def load_steering_data(
     
     models = None
     if svm_model_path and os.path.exists(svm_model_path):
-        with torch.serialization.safe_globals([sklearn.svm._classes.SVC]):
-            models = torch.load(svm_model_path, weights_only=False)
+        with torch.serialization.safe_globals([sklearn.svm._classes.SVC]): 
+            models = torch.load(svm_model_path, weights_only=False) 
 
     tokens_best = None
     if token_best_path and os.path.exists(token_best_path):
@@ -48,11 +43,12 @@ def load_steering_data(
     if scores_all is not None and scores_path:
         scores_np = scores_all.numpy()
         if 'block' in scores_path:
-            quantiles = np.quantile(scores_np, q=quantile_level, axis=2)
+            quantiles = np.quantile(scores_np, q=quantile_level, axis=2) 
         elif 'timestep' in scores_path:
-            quantiles = np.quantile(scores_np, q=quantile_level, axis=(1, 2))
+            quantiles = np.quantile(scores_np, q=quantile_level, axis=(1, 2)) 
         else:
             quantiles = np.quantile(scores_np, q=quantile_level)
+    
     return models, tokens_best, scores_all, quantiles
 
 
@@ -74,7 +70,7 @@ class SteeringEngine:
             
             # Use similarity weight only for removal tasks
             weight = sim.unsqueeze(-1)
-            return mask, weight.clip(0, 2)
+            return mask, weight.clip(0,2)
         
         dtype = activations.dtype
         act_f32 = activations.float()
@@ -85,7 +81,7 @@ class SteeringEngine:
         v_steer = v_unit
 
         if args.use_ssim_mask:
-            if vector_is_dense_per_token(args.vector_type) or args.steering_type == 'mean':
+            if args.vector_type == 'diff' or args.steering_type == 'mean':
                 mask, weight = calculate_sim(act_unit, v_unit, args)
             else:
                 masks = []
@@ -103,8 +99,8 @@ class SteeringEngine:
             mask, weight = 1.0, 1.0
 
         # 3. Task Logic
-        if args.task == 'remove':
-            if vector_is_dense_per_token(args.vector_type) or args.steering_type == 'mean':
+        if args.task == 'remove' or args.task == 'nudity':
+            if args.vector_type == 'diff' or args.steering_type == 'mean':
                 adjustment = args.strength * weight * v_steer.to(activations.dtype) * mask * score_val
             else:
                 score_val = score_val.unsqueeze(1)
@@ -113,7 +109,9 @@ class SteeringEngine:
             steered = activations - (adjustment)
         else:
             # Masked addition targets concept-relevant tokens
-            if vector_is_dense_per_token(args.vector_type) or args.steering_type == 'mean':
+            if args.vector_type == 'diff' or args.steering_type == 'mean':
+                print('=============')
+                print(v_steer.shape, score_val.shape)
                 adjustment = args.strength * v_steer.to(activations.dtype) * score_val  
             else:
                 score_val = score_val.unsqueeze(1)
@@ -158,6 +156,8 @@ def apply_attention_steering(pipe, args, vector, idx=None):
             step = state["step"]
             if layer_idx == cfg["last_layer"]: state["step"] += 1
 
+            print(step, layer_idx)
+
             if step not in vector or f"layer_{layer_idx}" not in vector[step]: return output
             if args.block_steering != 'all' and layer_idx not in args.block_steering: return output
             if args.t_steering != 'all' and step not in args.t_steering: return output
@@ -194,7 +194,7 @@ def apply_attention_steering(pipe, args, vector, idx=None):
                         for i, m in enumerate(ensemble)
                     ]
                     score_val = torch.tensor(votes).to(to_modify.device, to_modify.dtype)
-                    if vector_is_dense_per_token(args.vector_type) or args.steering_type == 'mean':
+                    if args.vector_type == 'diff' or args.steering_type == 'mean':
                         score_val = torch.mean(score_val, dim=0, keepdim=True)
             else:
                 score_val = torch.ones((1, 1), device=to_modify.device, dtype=to_modify.dtype)
@@ -229,12 +229,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_name', type=str, default="black-forest-labs/FLUX.1-schnell")
     parser.add_argument('--data_dir', type=str, required=True)
     parser.add_argument('--prompts_path', type=str, default='data/captions.txt')
-    parser.add_argument(
-        '--vector_type',
-        type=str,
-        default='diff',
-        help="Suffix of the main .pt in --data_dir, e.g. diff, ot_sw, ot_sinkhorn (loads *_{type}.pt).",
-    )
+    parser.add_argument('--vector_type', type=str, default='diff')
     parser.add_argument('--num_prompts', type=int, default=500)
     parser.add_argument('--task', type=str, default='add concept', choices=['add concept', 'remove', 'nudity'])
     parser.add_argument('--remove_prompt', type=str, default='cyberpunk style')
@@ -312,8 +307,8 @@ if __name__ == "__main__":
         prefix = prefix.rstrip("_")
 
         expected_txt_names = [
-            f"{prefix}_text_{args.vector_type}.pt",
-            f"{prefix}text_{args.vector_type}.pt",
+            f"{prefix}_text_diff.pt",
+            f"{prefix}text_diff.pt",
         ]
         vector_txt_candidates = [
             os.path.join(args.data_dir, n)
@@ -363,7 +358,7 @@ if __name__ == "__main__":
         
         hook_state, remove_hooks = apply_attention_steering(pipe, args, vector)
         generator_device = "cuda" if torch.cuda.is_available() else "cpu"
-        generator = torch.Generator().manual_seed(seed)
+        generator = torch.Generator("cpu").manual_seed(seed)
         
         images = pipe(
             prompt, num_inference_steps=args.inference_steps, guidance_scale=args.guidance_scale, width=args.width, height=args.height,

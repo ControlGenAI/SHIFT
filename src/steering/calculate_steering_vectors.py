@@ -71,8 +71,8 @@ def calculate_manual_diff(data_pos, data_neg, timesteps, blocks, best_tokens=Non
                 blocks_pos.append(data_pos[i][layer].squeeze()[:, indices])
                 blocks_neg.append(data_neg[i][layer].squeeze()[:, indices])
             else:
-                blocks_pos.append(data_pos[i][layer].squeeze())
-                blocks_neg.append(data_neg[i][layer].squeeze())
+                blocks_pos.append(data_pos[i][layer]['txt'].squeeze())
+                blocks_neg.append(data_neg[i][layer]['txt'].squeeze())
         all_steps_pos.append(torch.stack(blocks_pos))
         all_steps_neg.append(torch.stack(blocks_neg))
 
@@ -98,7 +98,7 @@ def train_ensemble_svms_best_tokens(data_pos, data_neg, best_tokens, args):
         for block in range(args.blocks):
             
             layer = f'layer_{block}'
-            indices = best_tokens[step][block] if best_tokens else torch.arange(data_pos[0][layer].shape[-2])
+            indices = best_tokens[step][block]['txt'] if best_tokens else torch.arange(data_pos[0][layer]['txt'].shape[-2])
             if isinstance(indices, torch.Tensor):
                 indices = indices.to(dtype=torch.long, device='cpu')
            
@@ -107,8 +107,8 @@ def train_ensemble_svms_best_tokens(data_pos, data_neg, best_tokens, args):
                 normals[step][f'layer_{block}'] = None
                 continue 
             
-            X_p = prepare_data_slice(data_pos[step][layer], indices, args.n_samples)
-            X_n = prepare_data_slice(data_neg[step][layer], indices, args.n_samples)
+            X_p = prepare_data_slice(data_pos[step][layer]['txt'], indices, args.n_samples)
+            X_n = prepare_data_slice(data_neg[step][layer]['txt'], indices, args.n_samples)
             X, y = np.vstack([X_p.cpu().numpy(), X_n.cpu().numpy()]), np.concatenate([np.ones(len(X_p)), np.zeros(len(X_n))])
             print(torch.from_numpy(X).norm(dim=-1))
             coefs = []

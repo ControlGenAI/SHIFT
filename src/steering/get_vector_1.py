@@ -85,6 +85,8 @@ def get_prompts_human_related(num=100, concept_pos='nudity', concept_neg=None, p
             else:
                 prompts_neg.append(b+' '+c)
 
+    print(prompts_pos[:num])
+    print(prompts_neg[:num])
     
     return prompts_pos[:num], prompts_neg[:num]
 

@@ -11,11 +11,11 @@ MODEL_NAME="${MODEL_NAME:-black-forest-labs/FLUX.1-schnell}"
 # Must be the directory that contains base_*_*_txt-*_subspace_act_v1.pt from calculate (match SAVE_DIR there).
 DATA_DIR="${DATA_DIR:-/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_remove/final_steering/subspace_act_txt_meandiff_tokenwise_raw_delta_attn_tokenwise_T_top_meandiff_100_nudity}"
 PROMPTS_PATH="${PROMPTS_PATH:-data/captions.txt}"
-RESULTS_DIR="${RESULTS_DIR:-/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_remove/generated_images_big/subspace/attn/txt_attn_50_txt_pooled_6_cls}"
+RESULTS_DIR="${RESULTS_DIR:-/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_remove/generated_images_big/subspace/attn/txt_attn_50_txt_pooled_6_cls_coco_test}"
   #/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/generated_images/subspace/attn/mean_diff_top_affine_100_1_main
 VECTOR_TYPE="${VECTOR_TYPE:-subspace_act_v1}"
 INJECTION_POINT="${INJECTION_POINT:-attn}"   # attn | block | ff
-TASK="${TASK:-nudity}"                   # add concept | remove | nudity
+TASK="${TASK:-remove}"                   # add concept | remove | nudity
 
 WIDTH="${WIDTH:-512}"
 HEIGHT="${HEIGHT:-512}"

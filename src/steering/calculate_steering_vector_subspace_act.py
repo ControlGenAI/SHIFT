@@ -290,6 +290,7 @@ def _fit_subspace_payload(
             delta_a_tok = (pos_acts.float() - neg_acts.float()).mean(dim=0)  # (T, C)
             
             if meandiff_topk_tokens > 0:
+                assert False
                 # Importance by average ||(A_pos - A_neg) U|| across paired samples.
                 z_delta = (pos_acts.float() - neg_acts.float()) @ cpca.U  # (N, T, d)
                 mean_norm = z_delta.norm(dim=-1).mean(dim=0)  # (T,)
@@ -305,6 +306,7 @@ def _fit_subspace_payload(
             delta_z_tok = (delta_a_tok @ cpca.U)
             
             if meandiff_neutral_k > 0:
+                
                 delta_z_tok = delta_z_tok @ cpca.U.T
                 # Remove component of tokenwise shift that lies in neutral (neg) PCA subspace.
                 # Build neutral basis from all neg token rows: (N*T, C).

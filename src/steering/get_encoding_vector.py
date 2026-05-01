@@ -58,11 +58,13 @@ def calculate_steering_vector(pipe, prompts_pos, prompts_neg):
             f"Prompt count mismatch: {len(prompts_pos)} positive vs {len(prompts_neg)} negative prompts."
         )
     print("Prompts:")
-    print(prompts_pos, prompts_neg)
+    #print(prompts_pos, prompts_neg)
     all_pos_seq, all_pos_pooled = [], []
     all_neg_seq, all_neg_pooled = [], []
     
     is_flux = isinstance(pipe, FluxPipeline)
+
+    print(prompts_pos[:15], prompts_neg[:15])
     
     for i in tqdm(range(len(prompts_pos)), desc="Encoding"):
         with torch.no_grad():

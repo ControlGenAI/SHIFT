@@ -14,9 +14,9 @@ CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 
 # NOTE: This script consumes activation *.pt files (from get_vector_1.py),
 # not rendered images from dataset_images_attn.
-NEG_PATH="${NEG_PATH:-/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_remove/data_vector/data_vector_attn_100/nudity__gs_0.0_prompts_150_neg_attn.pt}"
-POS_PATH="${POS_PATH:-/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_remove/data_vector/data_vector_attn_100/nudity__gs_0.0_prompts_150_pos_attn.pt}"
-SAVE_DIR="${SAVE_DIR:-experiments/flux_schnell/test_compare_remove/final_steering/subspace_act_txt_meandiff_tokenwise_raw_delta_attn_tokenwise_T_top_meandiff_100_nudity}"
+NEG_PATH="${NEG_PATH:-/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_remove/data_vector/data_vector_attn_100/nudity__gs_0.0_prompts_150_neg_block.pt}"
+POS_PATH="${POS_PATH:-/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_remove/data_vector/data_vector_attn_100/nudity__gs_0.0_prompts_150_pos_block.pt}"
+SAVE_DIR="${SAVE_DIR:-experiments/flux_schnell/test_compare_remove/final_steering/subspace_act_txt_meandiff_tokenwise_raw_delta_block_tokenwise_T_top_meandiff_100_nudity_block_neutral_k_1}"
 
 # branch: txt (default) | img | dual
 BRANCH="${BRANCH:-txt}"
@@ -69,5 +69,6 @@ CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES}" python ./src/steering/calculate_s
   --data_type "${DATA_TYPE}" \
   --save_dir "${SAVE_DIR}" \
   --cpca_tokenwise \
+  --meandiff_neutral_k 1 \
 
 echo "Done."

@@ -1,0 +1,19 @@
+# Minimal runtime dependencies for SHIFT.
+# Install a CUDA-compatible torch build for your platform first:
+#   https://pytorch.org/get-started/locally/
+
+torch
+torchvision
+diffusers
+transformers
+accelerate
+safetensors
+sentencepiece
+protobuf
+numpy
+scikit-learn
+Pillow
+tqdm
+datasets
+clean-fid
+torchmetrics

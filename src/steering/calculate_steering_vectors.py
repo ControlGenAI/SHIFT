@@ -1,5 +1,6 @@
 import argparse
 import os
+import time
 import torch
 import numpy as np
 from sklearn.svm import LinearSVC, SVC
@@ -60,30 +61,66 @@ def train_classifier(X, y, X_test, y_test, config_key, c_val, seed):
                 
     return clf, coef, score
 
-def calculate_manual_diff(data_pos, data_neg, timesteps, blocks, best_tokens=None):
-    all_steps_pos, all_steps_neg = [], []
-    for i in range(timesteps):
-        blocks_pos, blocks_neg = [], []
-        for j in range(blocks):
-            layer = f'layer_{j}'
+def _mean_txt_per_block(data, timesteps, blocks, n_samples=None, best_tokens=None):
+    means = {}
+    print(data.keys(), timesteps)
+    for step in range(timesteps):
+        means[step] = {}
+        for block in range(blocks):
+            layer = f'layer_{block}'
             if best_tokens is not None:
-                indices = best_tokens[i][j]
-                blocks_pos.append(data_pos[i][layer].squeeze()[:, indices])
-                blocks_neg.append(data_neg[i][layer].squeeze()[:, indices])
+                indices = best_tokens[step][block]
+                act = data[step][layer].squeeze()[:, indices]
             else:
-                blocks_pos.append(data_pos[i][layer]['txt'].squeeze())
-                blocks_neg.append(data_neg[i][layer]['txt'].squeeze())
-        all_steps_pos.append(torch.stack(blocks_pos))
-        all_steps_neg.append(torch.stack(blocks_neg))
+                act = data[step][layer]['txt'].squeeze()
 
-    diff = torch.stack(all_steps_pos) - torch.stack(all_steps_neg)
-    diff = diff.permute(2, 0, 1, 3, 4)
-    print(diff.shape)
+            if n_samples is not None:
+                act = act[:n_samples]
+
+            means[step][layer] = act.float().mean(0)
+            del data[step][layer]
+        del data[step]
+    return means
+
+
+def _mean_txt_per_block_from_path(path, timesteps, blocks, n_samples=None):
+    print(f"Loading {path} ...", flush=True)
+    t0 = time.perf_counter()
+    data = torch.load(path, map_location='cpu')
+    print(f"  loaded in {time.perf_counter() - t0:.1f}s", flush=True)
+
+    t1 = time.perf_counter()
+    means = _mean_txt_per_block(data, timesteps, blocks, n_samples=n_samples)
+    del data
+    print(f"  prompt means in {time.perf_counter() - t1:.1f}s", flush=True)
+    return means
+
+
+def calculate_manual_diff(data_pos, data_neg, timesteps, blocks, best_tokens=None, n_samples=None):
+    """Mean diff over prompts: mean(pos) - mean(neg) per (step, block)."""
+    pos_means = _mean_txt_per_block(data_pos, timesteps, blocks, n_samples, best_tokens)
+    neg_means = _mean_txt_per_block(data_neg, timesteps, blocks, n_samples, best_tokens)
+
     all_diff = {}
     for step in range(timesteps):
         all_diff[step] = {}
         for block in range(blocks):
-            all_diff[step][f'layer_{block}'] = diff[:, step, block].mean(0)
+            layer = f'layer_{block}'
+            all_diff[step][layer] = pos_means[step][layer] - neg_means[step][layer]
+    return all_diff
+
+
+def calculate_manual_diff_from_paths(pos_path, neg_path, timesteps, blocks, n_samples=None):
+    """Load pos and neg one at a time to keep peak RAM near one activation dump."""
+    pos_means = _mean_txt_per_block_from_path(pos_path, timesteps, blocks, n_samples)
+    neg_means = _mean_txt_per_block_from_path(neg_path, timesteps, blocks, n_samples)
+
+    all_diff = {}
+    for step in range(timesteps):
+        all_diff[step] = {}
+        for block in range(blocks):
+            layer = f'layer_{block}'
+            all_diff[step][layer] = pos_means[step][layer] - neg_means[step][layer]
     return all_diff
 
 # --- 3. Integrated Functional Logic ---
@@ -110,7 +147,7 @@ def train_ensemble_svms_best_tokens(data_pos, data_neg, best_tokens, args):
             X_p = prepare_data_slice(data_pos[step][layer]['txt'], indices, args.n_samples)
             X_n = prepare_data_slice(data_neg[step][layer]['txt'], indices, args.n_samples)
             X, y = np.vstack([X_p.cpu().numpy(), X_n.cpu().numpy()]), np.concatenate([np.ones(len(X_p)), np.zeros(len(X_n))])
-            print(torch.from_numpy(X).norm(dim=-1))
+            #print(torch.from_numpy(X).norm(dim=-1))
             coefs = []
             models_ensemble = []
             for i in range(args.n_ensemble):
@@ -161,12 +198,23 @@ def main():
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
-    data_pos = torch.load(args.pos_path, map_location='cpu')
-    data_neg = torch.load(args.neg_path, map_location='cpu')
 
     best_tokens, name = None, 'base'
     if args.best_tokens: name += '_best_tokens'
     prefix = os.path.join(args.save_dir, f"{name}_{args.threshold}_{args.n_samples}")
+
+    if args.method == 'diff' and not args.best_tokens:
+        all_diff = calculate_manual_diff_from_paths(
+            args.pos_path, args.neg_path, args.timesteps, args.blocks, args.n_samples
+        )
+        out_path = f"{prefix}_diff.pt"
+        print(f"Saving {out_path} ...", flush=True)
+        torch.save(all_diff, out_path)
+        print(f"Saved {out_path}", flush=True)
+        return
+
+    data_pos = torch.load(args.pos_path, map_location='cpu')
+    data_neg = torch.load(args.neg_path, map_location='cpu')
 
     if args.method == 'text':
         diff = {k: data_pos[k] - data_neg[k] for k in ['sequence', 'pooled'] if k in data_pos}
@@ -176,7 +224,9 @@ def main():
         return
 
     if args.method == 'diff':
-        all_diff = calculate_manual_diff(data_pos, data_neg, args.timesteps, args.blocks, best_tokens)
+        all_diff = calculate_manual_diff(
+            data_pos, data_neg, args.timesteps, args.blocks, best_tokens, args.n_samples
+        )
         torch.save(all_diff, f"{prefix}_diff.pt")
         return
 

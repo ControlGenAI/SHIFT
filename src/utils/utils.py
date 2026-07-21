@@ -67,7 +67,7 @@ def calculate_cls_score(
     """
     #print(cls_min)
     if not use_distance:
-        print(a.shape)
+        #print(a.shape)
         a = (a / a.norm(dim=-1))#.mean(1)
         # a = model['scaler'].transform(a)
         # a = model['pca'].transform(a)
@@ -120,6 +120,35 @@ def calculate_cls_score(
 
 def _to_pooled_device_dtype(t: torch.Tensor, ref: torch.Tensor) -> torch.Tensor:
     return t.to(device=ref.device, dtype=ref.dtype)
+
+
+def _safe_l2_normalize(t: torch.Tensor, dim: int = -1, eps: float = 1e-6) -> torch.Tensor:
+    return t / t.norm(dim=dim, keepdim=True).clamp(min=eps)
+
+
+def pooled_cosine_score(
+    pooled_prompt_embeds: torch.Tensor,
+    pooled_style: torch.Tensor,
+    task: str = "add concept",
+    mode: str = "similarity",
+) -> torch.Tensor:
+    """
+    Coefficient in [0, 1] from pooled prompt/vector cosine geometry.
+
+    For removal the steering vector is already sign-flipped before this function,
+    so compare against the original concept direction.
+    """
+    reference = -pooled_style if task != "add concept" else pooled_style
+    cosine = F.cosine_similarity(
+        _safe_l2_normalize(pooled_prompt_embeds.float()),
+        _safe_l2_normalize(reference.float()),
+        dim=-1,
+    )
+    if mode == "distance":
+        return (1.0 - cosine).clamp(0.0, 1.0).to(pooled_prompt_embeds.dtype)
+    if mode != "similarity":
+        raise ValueError(f"Unknown pooled cosine score mode: {mode}")
+    return cosine.clamp(0.0, 1.0).to(pooled_prompt_embeds.dtype)
 
 
 def _get_pooled_steering_payload_tensor(
@@ -228,6 +257,42 @@ def compute_pooled_steering_delta_advanced(
     return delta_z @ V.T
 
 
+def pooled_cosine_multiplier_from_vector(
+    pooled_prompt_embeds: torch.Tensor,
+    vector_txt: Any,
+    task: str = "add concept",
+    mode: str = "similarity",
+) -> torch.Tensor:
+    """
+    Calculate a detection coefficient from pooled prompt and pooled steering vector.
+    This does not normalize or modify the steering vector used for text steering.
+    """
+    if vector_txt is None:
+        return torch.ones((pooled_prompt_embeds.shape[0],), device=pooled_prompt_embeds.device, dtype=pooled_prompt_embeds.dtype)
+
+    if pooled_steering_mode(vector_txt) in ("subspace_mean", "monge"):
+        pooled_style = compute_pooled_steering_delta_advanced(
+            pooled_prompt_embeds,
+            vector_txt,
+            strength=1.0,
+            task=task,
+        )
+    else:
+        pooled_style = vector_txt["pooled"].to(pooled_prompt_embeds.device, pooled_prompt_embeds.dtype)
+        if pooled_style.dim() == 1:
+            pooled_style = pooled_style.unsqueeze(0)
+        pooled_style = pooled_style.mean(0, keepdim=True).expand_as(pooled_prompt_embeds)
+        if task != "add concept":
+            pooled_style = -pooled_style
+
+    return pooled_cosine_score(
+        pooled_prompt_embeds,
+        pooled_style,
+        task="add concept",
+        mode=mode,
+    )
+
+
 def apply_txt_steering_pooled_advanced(
     pooled_prompt_embeds: torch.Tensor,
     prompt_embeds: torch.Tensor,
@@ -317,24 +382,71 @@ def apply_txt_steering_auto(
     )
 
 
+def compute_pooled_steering_scale(
+    pooled_prompt_embeds: torch.Tensor,
+    pooled_style: torch.Tensor,
+    *,
+    task: str = "add concept",
+    strength: float = 1.0,
+) -> torch.Tensor:
+    if strength == 0.0:
+        return torch.tensor(0.0, device=pooled_prompt_embeds.device, dtype=pooled_prompt_embeds.dtype)
+    if task == "add concept":
+        return torch.tensor(1.0, device=pooled_prompt_embeds.device, dtype=pooled_prompt_embeds.dtype)
+
+    p_norm = pooled_prompt_embeds.norm(dim=-1, keepdim=True).clamp(min=1e-6)
+    s_norm = pooled_style.norm(dim=-1, keepdim=True).clamp(min=1e-6)
+    scale = F.cosine_similarity(
+        pooled_prompt_embeds / p_norm,
+        pooled_style / s_norm,
+        dim=-1,
+    )[0]
+    print('scale', scale)
+    # assert False, "scale"
+    # if scale < 0.2:
+    #     scale = 0
+    return (scale).clip(0, 1)
+
+
+def compute_pooled_steering_scale_from_vector(
+    pooled_prompt_embeds: torch.Tensor,
+    prompt_embeds: torch.Tensor,
+    vector_txt: Dict[str, Any],
+    *,
+    strength: float = 1.0,
+    task: str = "add concept",
+) -> torch.Tensor:
+    pooled_style, _ = steering_txt_data(
+        vector_txt,
+        strength,
+        prompt_embeds,
+        mean=True,
+        ssim=False,
+        pooled=True,
+        normed=False,
+        task=task,
+        seq=False,
+    )
+    return compute_pooled_steering_scale(
+        pooled_prompt_embeds,
+        pooled_style,
+        task=task,
+        strength=strength,
+    )
+
+
 def apply_txt_steering(pooled_prompt_embeds, prompt_embeds, pooled_style, seqs_style, normed=True, strength=0.0, task='add'):
     #normed = True
     
 
-    if strength != 0.0:
-        if task == 'add concept':
-            scale = 1
-        else:
-            scale = F.cosine_similarity(pooled_prompt_embeds.clone() / pooled_prompt_embeds.norm(dim=-1, keepdim=True), pooled_style.clone() / pooled_style.norm(dim=-1, keepdim=True), dim=-1)[0]
-            if task != 'add concept':
-                scale = -scale
-            #assert False
-
-            print('--------------------------------', scale, '-------')
-            
-            scale = scale.clip(0,1)
-    else:
-        scale = 0.0
+    scale = compute_pooled_steering_scale(
+        pooled_prompt_embeds,
+        pooled_style,
+        task=task,
+        strength=strength,
+    )
+    print('--------------------------------', scale, '-------')
+    #assert False, "txt_steering.get('vector') is not None"
 
     #print(scale, pooled_style.shape, seqs_style.shape)
     

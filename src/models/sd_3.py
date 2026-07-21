@@ -49,6 +49,12 @@ from diffusers.pipelines.stable_diffusion_3.pipeline_output import StableDiffusi
 
 
 from src.models.transformer_sd3 import SD3Transformer2DModel
+from src.utils.utils import (
+    apply_txt_steering,
+    apply_txt_steering_pooled_advanced,
+    steering_txt_data,
+    use_pooled_advanced_txt_steering,
+)
 
 if is_torch_xla_available():
     import torch_xla.core.xla_model as xm
@@ -92,17 +98,19 @@ def calculate_shift(
     return mu
 
 
-def register_attr(model, a, t):
+def register_attr(model, a, t, scale=0.0):
     print(len(model.transformer.transformer_blocks))
     
     for i, block in enumerate(model.transformer.transformer_blocks):
         block.attn.t = t
         block.attn.a = a
+        block.attn.scale = scale
 
         try:
 
             block.attn2.t = t
             block.attn2.a = a
+            block.attn2.scale = scale
             #print("hhh")
         except:
             pass
@@ -828,6 +836,7 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
         skip_layer_guidance_stop: float = 0.2,
         skip_layer_guidance_start: float = 0.01,
         mu: Optional[float] = None,
+        txt_steering: Optional[Dict[str, Any]] = None,
         **args,
     ):
         r"""
@@ -1009,22 +1018,107 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
             lora_scale=lora_scale,
         )
 
+        txt_steering = txt_steering or {"vector": None}
+        steered_prompt_embeds = prompt_embeds
+        steered_pooled_prompt_embeds = pooled_prompt_embeds
+        txt_steering_scale = 0.0
+
+        txt_vector_entries = None
+        use_pooled_advanced = False
+        if txt_steering.get("vectors"):
+            txt_vector_entries = []
+            for entry in txt_steering["vectors"]:
+                vector = entry.get("vector")
+                if vector is None:
+                    continue
+                strength = entry.get("strength", txt_steering.get("strength", 1.0))
+                task_t = entry.get("task", txt_steering.get("task", "add concept"))
+                pooled_style, seqs_style = steering_txt_data(
+                    vector,
+                    strength,
+                    prompt_embeds,
+                    mean=True,
+                    ssim=False,
+                    pooled=True,
+                    normed=False,
+                    task=task_t,
+                    seq=False,
+                )
+                txt_vector_entries.append((entry, pooled_style, seqs_style))
+            if len(txt_vector_entries) == 0:
+                txt_vector_entries = None
+
+        elif txt_steering.get("vector") is not None:
+            #assert False, "txt_steering.get('vector') is not None"
+            vector = txt_steering["vector"]
+            use_pooled_advanced = use_pooled_advanced_txt_steering(txt_steering, vector)
+            if use_pooled_advanced:
+                steered_pooled_prompt_embeds, steered_prompt_embeds, txt_steering_scale = apply_txt_steering_pooled_advanced(
+                    pooled_prompt_embeds,
+                    prompt_embeds,
+                    vector,
+                    normed=False,
+                    strength=txt_steering.get("strength", 1.0),
+                    task=txt_steering.get("task", "add concept"),
+                )
+            else:
+                pooled_style, seqs_style = steering_txt_data(
+                    vector,
+                    txt_steering.get("strength", 1.0),
+                    prompt_embeds,
+                    mean=True,
+                    ssim=False,
+                    pooled=True,
+                    normed=False,
+                    task=txt_steering.get("task", "add concept"),
+                    seq=False,
+                )
+                steered_pooled_prompt_embeds, steered_prompt_embeds, txt_steering_scale = apply_txt_steering(
+                    pooled_prompt_embeds,
+                    prompt_embeds,
+                    pooled_style,
+                    seqs_style,
+                    normed=False,
+                    strength=txt_steering.get("strength", 1.0),
+                    task=txt_steering.get("task", "add concept"),
+                )
+
+        if txt_vector_entries is not None:
+            new_pooled_embeds = pooled_prompt_embeds
+            new_prompt_embeds = prompt_embeds
+            for entry, pooled_style, seqs_style in txt_vector_entries:
+                strength = entry.get("strength", txt_steering.get("strength", 1.0))
+                task_t = entry.get("task", txt_steering.get("task", "add concept"))
+                candidate_pooled, candidate_prompt, txt_steering_scale = apply_txt_steering(
+                    pooled_prompt_embeds,
+                    prompt_embeds,
+                    pooled_style,
+                    seqs_style,
+                    normed=False,
+                    strength=strength,
+                    task=task_t,
+                )
+                new_pooled_embeds = new_pooled_embeds + (candidate_pooled - pooled_prompt_embeds)
+                new_prompt_embeds = new_prompt_embeds + (candidate_prompt - prompt_embeds)
+            steered_pooled_prompt_embeds = new_pooled_embeds
+            steered_prompt_embeds = new_prompt_embeds
+
         if self.do_classifier_free_guidance:
             if skip_guidance_layers is not None:
                 original_prompt_embeds = prompt_embeds
                 original_pooled_prompt_embeds = pooled_prompt_embeds
 
-            ##############
-            # embeds_steered = torch.load('/home/jovyan/shares/SR006.nfs2/konovalova/workspace/attention-map-diffusers/steering_vecs_clean/remove_experiments/data_vectors_txt/Spongebob_txt__prompts_20_diff_embeddings.pt')
-            # seqs_steered = embeds_steered['sequence'].to(pooled_prompt_embeds.dtype).to(pooled_prompt_embeds.device).mean(0, keepdim=True) * 1.2
-            # pooled_steered = embeds_steered['pooled'].to(pooled_prompt_embeds.dtype).to(pooled_prompt_embeds.device).mean(0, keepdim=True) * 1.2
-            
-            prompt_embeds_steered = torch.cat([negative_prompt_embeds, prompt_embeds], dim=0)
-            pooled_prompt_embeds_steered = torch.cat([negative_pooled_prompt_embeds, pooled_prompt_embeds], dim=0)
+            prompt_embeds_steered = torch.cat([negative_prompt_embeds, steered_prompt_embeds], dim=0)
+            pooled_prompt_embeds_steered = torch.cat(
+                [negative_pooled_prompt_embeds, steered_pooled_prompt_embeds], dim=0
+            )
 
                 
             prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds], dim=0)
             pooled_prompt_embeds = torch.cat([negative_pooled_prompt_embeds, pooled_prompt_embeds], dim=0)
+        else:
+            prompt_embeds_steered = steered_prompt_embeds
+            pooled_prompt_embeds_steered = steered_pooled_prompt_embeds
 
         # 4. Prepare latent variables
         num_channels_latents = self.transformer.config.in_channels
@@ -1099,31 +1193,28 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
 
         # 7. Denoising loop
         
-        # if photo is None:
-        latents = torch.cat([latents]*2)
-        
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
                 if self.interrupt:
                     continue
 
-                register_attr(self, t=t.item(), a=args['structure_strength'])
+                register_attr(self, t=t.item(), a=args['structure_strength'], scale=txt_steering_scale)
 
                 
                 # expand the latents if we are doing classifier free guidance
                 if self.do_classifier_free_guidance:
                     if photo is None:
-                        latent_model_input = torch.cat([latents[0:1], latents[0:1], latents[1:2], latents[1:2]], dim=0)
+                        latent_model_input = torch.cat([latents, latents], dim=0)
                     else:
                         if i == -1:
-                            latent_model_input = torch.cat([latents[0:1], latents[0:1], latents[1:2], latents[1:2], latents[0:1], latents[0:1]], dim=0)
+                            latent_model_input = torch.cat([latents, latents, latents], dim=0)
                         else:
                             noise_struct = torch.randn_like(init_latents).to(init_latents.dtype).to(init_latents.device)
                             timestep_i = (self.scheduler.timesteps == t).nonzero(as_tuple=True)[0][0].item()
                             prev_timestep = self.scheduler.timesteps[timestep_i:timestep_i + 1] 
                             structure_latents = self.scheduler.scale_noise(init_latents, prev_timestep, noise_struct)
                             structure_latents = structure_latents.to(init_latents.dtype).to(init_latents.device)
-                            latent_model_input = torch.cat([latents[0:1], latents[0:1], latents[1:2], latents[1:2], structure_latents[0:1], structure_latents[0:1]], dim=0)
+                            latent_model_input = torch.cat([latents, latents, structure_latents], dim=0)
                 else:
                     latent_model_input = latents
 
@@ -1132,8 +1223,8 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
                     noise_pred = self.transformer(
                         hidden_states=latent_model_input,
                         timestep=timestep,
-                        encoder_hidden_states=torch.cat([prompt_embeds_steered, prompt_embeds]),
-                        pooled_projections=torch.cat([pooled_prompt_embeds_steered, pooled_prompt_embeds]),
+                        encoder_hidden_states=prompt_embeds_steered,
+                        pooled_projections=pooled_prompt_embeds_steered,
                         joint_attention_kwargs=self.joint_attention_kwargs,
                         return_dict=False,
                     )[0]
@@ -1150,12 +1241,10 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
                 # perform guidance
                 if self.do_classifier_free_guidance:
                     if photo is None:
-                        noise_pred_uncond, noise_pred_text, noise_pred_uncond_not_changed, noise_pred_text_not_changed   = noise_pred.chunk(4)
+                        noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
                     else:
-                        noise_pred_uncond, noise_pred_text, noise_pred_uncond_not_changed, noise_pred_text_not_changed, _, _   = noise_pred.chunk(6)
+                        noise_pred_uncond, noise_pred_text, _ = noise_pred.chunk(3)
                     noise_pred = noise_pred_uncond + self.guidance_scale * (noise_pred_text - noise_pred_uncond)
-                    #if photo is None:
-                    noise_pred_not_changed = noise_pred_uncond_not_changed + self.guidance_scale * (noise_pred_text_not_changed - noise_pred_uncond_not_changed)
 
                     should_skip_layers = (
                         True
@@ -1182,8 +1271,6 @@ class StableDiffusion3Pipeline(DiffusionPipeline, SD3LoraLoaderMixin, FromSingle
 
                 # compute the previous noisy sample x_t -> x_t-1
                 latents_dtype = latents.dtype
-                #if photo is None:
-                noise_pred = torch.cat([noise_pred, noise_pred_not_changed])
                 
                 latents = self.scheduler.step(noise_pred, t, latents, return_dict=False)[0]
 

@@ -1,9 +1,18 @@
-python ./src/steering/calculate_text_encoder_pooled_monge.py \
-  --pos_path "/home/jovyan/konovalova/steering/experiments/flux_schnell/add/data_vectors_txt/concrete_big glasses_big glasses_prompts_20_pos_embeddings.pt" \
-  --neg_path "/home/jovyan/konovalova/steering/experiments/flux_schnell/add/data_vectors_txt/concrete__big glasses_prompts_20_neg_embeddings.pt" \
-  --save_path "/home/jovyan/konovalova/clean_code/steering/experiments/flux_schnell/test_compare_add/final_steering/subspace_act_txt_meandiff_tokenwise_raw_delta_attn_tokenwise_T_top_meandiff_100/text_glasses.pt" \
-  --n_samples 20 \
-  --train_frac 1.0 \
-  --subspace_dim 32 \
-  --min_explained 0.90 \
-  --pca_delta_mode raw_delta
+#!/bin/bash
+# Optional: compute text-embedding steering vectors (FLUX / SD3.5).
+# Requires dumps from get_encoding_vector.py.
+# Run from repository root: bash scripts/steering_calculate_txt.sh
+set -euo pipefail
+
+POS_TXT_PATH="experiments/flux_schnell/remove/data_vectors_txt/people_nudity_nudity_prompts_135_pos_embeddings.pt"
+NEG_TXT_PATH="experiments/flux_schnell/remove/data_vectors_txt/people__nudity_prompts_135_neg_embeddings.pt"
+SAVE_DIR="experiments/flux_schnell/remove/final_steering/block_steering/nudity"
+
+mkdir -p "${SAVE_DIR}"
+
+python ./src/steering/calculate_steering_vectors.py \
+    --pos_path "${POS_TXT_PATH}" \
+    --neg_path "${NEG_TXT_PATH}" \
+    --save_dir "${SAVE_DIR}" \
+    --method text \
+    --n_samples 135

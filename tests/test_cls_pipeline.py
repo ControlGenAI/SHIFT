@@ -150,7 +150,7 @@ def test_all_four_steps_use_last_adam_state_and_record_predictions(space, monkey
 @pytest.mark.parametrize('filename', ['cls_velocity_guidance_all_steps.json', 'cls_joint_all_blocks_all_steps.json',
                                     'cls_joint_final_image.json', 'cls_joint_final_image_paired_prompt.json',
                                     'cls_joint_scaling_rms.json', 'cls_joint_scaling_none.json',
-                                    'cls_joint_scaling_none_matched.json'])
+                                    'cls_joint_scaling_none_matched.json', 'cls_joint_debug_first_update.json'])
 def test_experiment_wires_unbounded_options_and_saves_step_images(tmp_path, monkeypatch, filename):
     import json
     from pathlib import Path
@@ -186,7 +186,7 @@ def test_experiment_wires_unbounded_options_and_saves_step_images(tmp_path, monk
     zero, edited = entries[-2:]
     assert zero['alpha'] == 0 and zero['baseline_pixel_max_abs'] == 0
     stem = Path(edited['image']).stem
-    for step in range(4):
+    for step in config['cls_optimization']['steps']:
         for stage in ('before', 'after'):
             assert (output / f'{stem}_step{step}_{stage}.png').is_file()
     details = json.loads((output / f'{stem}.json').read_text())
@@ -196,11 +196,13 @@ def test_experiment_wires_unbounded_options_and_saves_step_images(tmp_path, monk
     assert details['correction_scaling'] == edited['correction_scaling'] == scaling
     assert details['match_rms_adam'] == edited['match_rms_adam'] == matched
     assert all(log['correction_scaling'] == scaling and log['match_rms_adam'] == matched for log in selected)
-    assert len(selected) == (1 if final else 4)
+    assert len(selected) == (1 if final else len(config['cls_optimization']['steps']))
     assert all(log['selection'] == 'last' and log['selected_iteration'] == 1 and
                log['max_relative_rms'] is None for log in selected)
     references = torch.load(output / f'{stem}_cls_targets.pt', weights_only=True)
-    assert len(references) == (1 if final else 4)
+    assert len(references) == (1 if final else len(config['cls_optimization']['steps']))
+    probes = [r for r in details['logs'] if r.get('phase') == 'first_update_probe']
+    assert [r['multiplier'] for r in probes] == config['cls_optimization'].get('first_update_probe', [])
     if final:
         from PIL import Image
         from torchvision.transforms.functional import pil_to_tensor

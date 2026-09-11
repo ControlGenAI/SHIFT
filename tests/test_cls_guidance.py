@@ -214,7 +214,7 @@ def test_unbounded_last_matches_adam_even_when_the_last_update_is_worse():
         _unpack_latents=lambda x, *args: x.transpose(1, 2).reshape(1, 3, 2, 2))
     direction = torch.tensor([.1, -.1, 0.])
     # Deliberately overshoot: this distinguishes "last" from silently keeping baseline.
-    guide = CLSActivationGuidance(Dino(), direction, 0, iterations=1, learning_rate=2.,
+    guide = CLSActivationGuidance(Dino(), direction, 0, iterations=1, learning_rate=4.,
         preservation_weight=0., max_relative_rms=None, selection='last',
         resolution=(2, 2), optimization_space='velocity')
     with torch.no_grad():
@@ -224,7 +224,7 @@ def test_unbounded_last_matches_adam_even_when_the_last_update_is_worse():
         target = F.normalize(source - direction, dim=-1)
     # Ordinary unconstrained Adam, without projection, penalty or best-candidate selection.
     u = torch.zeros_like(baseline, requires_grad=True)
-    optimizer = torch.optim.Adam([u], lr=2.)
+    optimizer = torch.optim.Adam([u], lr=guide.lr)
     loss = .5 * (guide.cls_of_velocity(pipe, latents, baseline + scale * u,
                                      torch.tensor(.75)) - target).square().sum(-1).mean()
     loss.backward()

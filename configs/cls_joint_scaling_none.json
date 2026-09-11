@@ -12,6 +12,7 @@
   "alphas": [0.0, 0.5],
   "cls_optimization": {
     "objective": "one_step",
+    "decode_mode": "pipeline",
     "space": "activation",
     "block_mode": "joint",
     "correction_scaling": "none",

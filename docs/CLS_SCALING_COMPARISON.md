@@ -11,6 +11,11 @@
 сравнение. DINO CLS, mean-diff, prompt, seed, sigma, число итераций и способ
 декодирования одинаковы для всех вариантов. Новые конфиги используют alpha 0 и 0.5.
 
+Текущие конфиги явно задают `decode_mode: "pipeline"`: RGB для DINO согласован с
+выходом SHIFT. Сохранённые результаты коммита `1a0f4f2` получены до этого исправления.
+Для их воспроизведения нужен `decode_mode: "legacy_fp32_unclipped"`.
+Разбор и диагностика: [CLS_SCALING_AUDIT.md](CLS_SCALING_AUDIT.md).
+
 ## Три варианта
 
 Обозначим `s = RMS(h_baseline)` по всем image-токенам и каналам одного изображения.
@@ -53,7 +58,7 @@ LR. Эксперимент и так обрабатывает лица по од
 bash scripts/test_cls_scaling.sh \
   out/dataset200 \
   out/cls_features/cls_direction.pt \
-  out/cls_scaling_check \
+  out/cls_scaling_check_v2 \
   1
 ```
 

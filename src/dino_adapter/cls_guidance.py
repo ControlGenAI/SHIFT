@@ -8,6 +8,7 @@ from contextlib import contextmanager, ExitStack
 import math
 import torch
 import torch.nn.functional as F
+from .cls_images import decode_latents, one_step_latents, pipeline_rgb
 
 
 def relative_rms(delta, reference_scale):
@@ -78,7 +79,15 @@ class CLSActivationGuidance:
                  learning_rate=.01, preservation_weight=1., max_relative_rms=.05,
                  resolution=(512, 512), optimization_space='activation', selection='best',
                  prediction_callback=None, block_mode='independent',
-                 correction_scaling='rms', match_rms_adam=False):
+                 correction_scaling='rms', match_rms_adam=False, decode_mode='pipeline',
+                 first_update_probe=()):
+        if decode_mode not in ('pipeline', 'legacy_fp32_unclipped'):
+            raise ValueError('decode_mode must be pipeline or legacy_fp32_unclipped')
+        if (not isinstance(first_update_probe, (list, tuple)) or
+                any(type(v) not in (int, float) or not math.isfinite(v) for v in first_update_probe) or
+                len(set(first_update_probe)) != len(first_update_probe) or
+                (first_update_probe and 0 not in first_update_probe)):
+            raise ValueError('first_update_probe must contain distinct finite multipliers including zero, or be empty')
         if correction_scaling not in ('rms', 'none'):
             raise ValueError('correction_scaling must be rms or none')
         if type(match_rms_adam) is not bool or (match_rms_adam and correction_scaling != 'none'):
@@ -125,6 +134,8 @@ class CLSActivationGuidance:
         self.resolution, self.space = resolution, optimization_space
         self.selection, self.prediction_callback = selection, prediction_callback
         self.correction_scaling, self.match_rms_adam = correction_scaling, match_rms_adam
+        self.decode_mode = decode_mode
+        self.first_update_probe = tuple(first_update_probe)
         self.logs, self.references = [], []
 
     def correction_scales(self, reference_scales):
@@ -153,6 +164,53 @@ class CLSActivationGuidance:
     def active(self, step):
         return step in self.steps
 
+    def _probe_first_update(self, objective, corrections, optimizer, initial_loss,
+                            baseline_velocity, velocity_scale, step):
+        """Evaluate signed first-Adam directions; restore zeros and preserve Adam state.
+
+        This diagnostic adds forwards and one repeated backward. It never accepts,
+        rejects, clips, or changes an optimizer update.
+        """
+        groups = {id(p): group for group in optimizer.param_groups for p in group['params']}
+        with torch.no_grad():
+            directions = {i: -groups[id(u)]['lr'] * u.grad / (u.grad.abs() + groups[id(u)]['eps'])
+                          for i, u in corrections.items()}
+            slope = sum(float((u.grad * directions[i]).sum()) for i, u in corrections.items())
+        try:
+            for multiplier in self.first_update_probe:
+                with torch.no_grad():
+                    for i, u in corrections.items():
+                        u.copy_(directions[i] * multiplier)
+                with objective(corrections) as result:
+                    loss, semantic, preserve, velocity, cls, rms, block_rms, image_stats = result
+                    if not torch.isfinite(loss) or not torch.isfinite(velocity).all():
+                        raise RuntimeError('Nonfinite first-update diagnostic')
+                    row = dict(step=step, phase='first_update_probe', multiplier=multiplier,
+                        total_loss=float(loss.detach()), semantic_loss=float(semantic.detach()),
+                        observed_loss_delta=float(loss.detach()) - initial_loss,
+                        predicted_linear_loss_delta=multiplier * slope,
+                        actual_relative_rms=rms.detach().cpu().tolist(), **image_stats,
+                        velocity_relative_rms=relative_rms(velocity.detach().float() - baseline_velocity.float(),
+                                                          velocity_scale).cpu().tolist())
+                    if multiplier == 0:
+                        repeated = torch.autograd.grad(loss, tuple(corrections.values()))
+                        row['repeat_gradients'] = []
+                        for (i, u), gradient in zip(corrections.items(), repeated):
+                            if not torch.isfinite(gradient).all():
+                                raise RuntimeError('Nonfinite repeated diagnostic gradient')
+                            old_norm, new_norm = u.grad.norm(), gradient.norm()
+                            denom = old_norm * new_norm
+                            row['repeat_gradients'].append(dict(block=i,
+                                relative_l2=float((gradient - u.grad).norm() / old_norm.clamp_min(1e-20)),
+                                cosine=float((gradient * u.grad).sum() / denom) if denom > 0 else None))
+                        del repeated, gradient
+                self.logs.append(row)
+                del result, loss, semantic, preserve, velocity, cls, rms, block_rms
+        finally:
+            with torch.no_grad():
+                for u in corrections.values():
+                    u.zero_()
+
     def validate_run(self, height, width, num_steps):
         if (height, width) != tuple(self.resolution):
             raise ValueError('CLS resolution must match the pipeline height and width')
@@ -160,7 +218,9 @@ class CLSActivationGuidance:
             raise ValueError('CLS guidance step is outside the actual denoising schedule')
 
     def decode_velocity(self, pipe, latents, velocity, sigma):
-        # Keep clean estimate subtraction in FP32 before casting for the VAE.
+        if self.decode_mode == 'pipeline':
+            return decode_latents(pipe, one_step_latents(latents, velocity, sigma), self.resolution)
+        # Reproduce older experiments, including their different BF16 rounding.
         clean = latents.float() - sigma.float() * velocity.float()
         height, width = self.resolution
         unpacked = pipe._unpack_latents(clean, height, width, pipe.vae_scale_factor)
@@ -169,7 +229,10 @@ class CLSActivationGuidance:
 
     def cls_of_velocity(self, pipe, latents, velocity, sigma):
         decoded = self.decode_velocity(pipe, latents, velocity, sigma)
-        return self.dino.cls_from_rgb(decoded.float() / 2 + .5)
+        return self.dino.cls_from_rgb(self.rgb_of_decoded(pipe, decoded))
+
+    def rgb_of_decoded(self, pipe, decoded):
+        return pipeline_rgb(pipe, decoded) if self.decode_mode == 'pipeline' else decoded.float() / 2 + .5
 
     def predict(self, pipe, step, timestep, latents, kwargs):
         if torch.is_inference_mode_enabled():
@@ -191,7 +254,8 @@ class CLSActivationGuidance:
             with torch.no_grad():
                 velocity = pipe.transformer(**kwargs)[0]
             self.logs.append(dict(step=step, alpha=0., bypass=True,
-                correction_scaling=self.correction_scaling, match_rms_adam=self.match_rms_adam))
+                correction_scaling=self.correction_scaling, match_rms_adam=self.match_rms_adam,
+                decode_mode=self.decode_mode))
             return velocity
         first = self.blocks[0]
         if self.space == 'activation':
@@ -261,10 +325,15 @@ class CLSActivationGuidance:
                     preserve = applied.square().mean()
                     actual_rms = relative_rms(modified.float() - base, reference_scales[first])
                     block_rms = {first: actual_rms}
-                cls = self.cls_of_velocity(pipe, latents, velocity, sigma)
+                decoded = self.decode_velocity(pipe, latents, velocity, sigma)
+                rgb = self.rgb_of_decoded(pipe, decoded)
+                cls = self.dino.cls_from_rgb(rgb)
+                with torch.no_grad():
+                    image_stats = dict(decoded_out_of_range_fraction=float((decoded.abs() > 1).float().mean()),
+                                       dino_rgb_min=float(rgb.min()), dino_rgb_max=float(rgb.max()))
                 semantic = .5 * (cls - target).square().sum(-1).mean()
                 loss = semantic if self.preservation_weight == 0 else semantic + self.preservation_weight * preserve
-                yield loss, semantic, preserve, velocity, cls, actual_rms, block_rms
+                yield loss, semantic, preserve, velocity, cls, actual_rms, block_rms, image_stats
 
         with torch.enable_grad():
             corrections = {i: torch.zeros(shape, device=device, dtype=torch.float32, requires_grad=True)
@@ -273,7 +342,7 @@ class CLSActivationGuidance:
             # Evaluate iterations 0..N; the final updated state is also assessed.
             for iteration in range(self.iterations + 1):
                 with objective(corrections) as result:
-                    loss, semantic, preserve, velocity, cls, actual_rms, block_rms = result
+                    loss, semantic, preserve, velocity, cls, actual_rms, block_rms, image_stats = result
                     if not torch.isfinite(loss) or not torch.isfinite(velocity).all():
                         raise RuntimeError('Nonfinite CLS objective/velocity')
                     value = float(loss.detach())
@@ -288,7 +357,7 @@ class CLSActivationGuidance:
                         selected_block_rms = {i: rms.detach().cpu().tolist() for i, rms in block_rms.items()}
                     fp32_rms = {i: u.detach().square().mean((1, 2)).sqrt() *
                                 (scales[i] / reference_scales[i]).flatten() for i, u in corrections.items()}
-                    entry = dict(step=step, iteration=iteration,
+                    entry = dict(step=step, iteration=iteration, **image_stats,
                                       semantic_loss=float(semantic.detach()), total_loss=value,
                                       preservation_loss=float(preserve.detach()), feasible=feasible,
                                       actual_relative_rms=actual_rms.detach().cpu().tolist(),
@@ -321,6 +390,9 @@ class CLSActivationGuidance:
                         del gradients, gradient
                 # All residual hooks are removed before changing their parameters.
                 if iteration < self.iterations:
+                    if iteration == 0 and self.first_update_probe:
+                        self._probe_first_update(objective, corrections, optimizer, value,
+                                                 baseline_velocity, velocity_scale, step)
                     optimizer.step()
                     with torch.no_grad():
                         for index, (i, u) in enumerate(corrections.items()):
@@ -342,6 +414,7 @@ class CLSActivationGuidance:
                               preservation_weight=self.preservation_weight,
                               learning_rate=self.lr, iterations=self.iterations,
                               correction_scaling=self.correction_scaling, match_rms_adam=self.match_rms_adam,
+                              decode_mode=self.decode_mode,
                               optimizer_groups=optimizer_groups,
                               sigma=float(sigma), model_tensor_dtype=str(model_dtype),
                               correction_dtype='torch.float32',

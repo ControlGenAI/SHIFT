@@ -41,7 +41,10 @@ def test_matched_adam_reproduces_rms_coordinates_including_epsilon():
 def test_raw_corrections_keep_physical_rms_diagnostics_and_optional_budget(space, cap):
     transformer = Transformer().eval()
     latents = torch.full((1, 4, 3), 10.)
-    pipe = SimpleNamespace(transformer=transformer, vae=VAE(), vae_scale_factor=1,
+    vae = VAE()
+    # Large activation units should not make the analytic decoder fully saturated.
+    vae.decode = lambda x, **kwargs: (x / 16.,)
+    pipe = SimpleNamespace(transformer=transformer, vae=vae, vae_scale_factor=1,
         scheduler=SimpleNamespace(sigmas=torch.tensor([.75, 0.])),
         _unpack_latents=lambda x, *args: x.transpose(1, 2).reshape(1, 3, 2, 2))
     guide = CLSActivationGuidance(Dino(), torch.tensor([.1, -.1, 0.]), 0,

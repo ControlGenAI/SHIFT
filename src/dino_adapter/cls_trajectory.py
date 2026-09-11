@@ -13,15 +13,7 @@ import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 
 from .cls_guidance import CLSActivationGuidance, relative_rms
-
-
-def decode_final(pipe, latents, resolution):
-    """Use the pipeline's actual dtype/order of operations, including RGB clipping."""
-    height, width = resolution
-    unpacked = pipe._unpack_latents(latents, height, width, pipe.vae_scale_factor)
-    unpacked = unpacked / pipe.vae.config.scaling_factor + pipe.vae.config.shift_factor
-    decoded = pipe.vae.decode(unpacked, return_dict=False)[0]
-    return decoded, pipe.image_processor.postprocess(decoded, output_type='pt').float()
+from .cls_images import decode_final, one_step_latents
 
 
 def rollout(pipe, initial, kwargs):
@@ -270,6 +262,6 @@ class CLSTrajectoryGuidance(CLSActivationGuidance):
                 for stage, states, velocities in (('before', baseline_states, baseline_velocities),
                                                  ('after', self.planned_states, self.planned_velocities)):
                     for step, (state, velocity) in enumerate(zip(states, velocities)):
-                        clean = (state.float() - pipe.scheduler.sigmas[step].to(state.device) * velocity.float()).to(velocity.dtype)
+                        clean = one_step_latents(state, velocity, pipe.scheduler.sigmas[step].to(state.device))
                         decoded, _ = decode_final(pipe, clean, self.resolution)
                         self.prediction_callback(step, stage, decoded)

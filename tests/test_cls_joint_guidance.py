@@ -12,10 +12,11 @@ from src.dino_adapter.cls_guidance import CLSActivationGuidance, joint_image_out
 @pytest.mark.parametrize('dtype', [torch.float32, torch.bfloat16])
 @pytest.mark.parametrize('checkpoint', [False, True])
 @pytest.mark.parametrize('penalty', [0., .03])
-def test_joint_flux_hooks_match_explicit_residual_forward_and_every_gradient(dtype, checkpoint, penalty, monkeypatch):
+@pytest.mark.parametrize('num_layers', [3, 19])
+def test_joint_flux_hooks_match_explicit_residual_forward_and_every_gradient(dtype, checkpoint, penalty, num_layers, monkeypatch):
     from diffusers import FluxTransformer2DModel
     torch.manual_seed(32)
-    model = FluxTransformer2DModel(in_channels=8, num_layers=3, num_single_layers=1,
+    model = FluxTransformer2DModel(in_channels=8, num_layers=num_layers, num_single_layers=1,
         attention_head_dim=8, num_attention_heads=2, joint_attention_dim=12,
         pooled_projection_dim=4, axes_dims_rope=(2, 2, 4)).to(dtype).eval().requires_grad_(False)
     reference = copy.deepcopy(model)

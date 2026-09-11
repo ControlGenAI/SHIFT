@@ -145,7 +145,9 @@ def guidance_options(config):
                 optimization_space=settings.get('space', 'activation'),
                 block_mode=settings.get('block_mode', 'independent'),
                 correction_scaling=settings.get('correction_scaling', 'rms'),
-                match_rms_adam=settings.get('match_rms_adam', False))
+                match_rms_adam=settings.get('match_rms_adam', False),
+                decode_mode=settings.get('decode_mode', 'pipeline'),
+                first_update_probe=settings.get('first_update_probe', []))
 
 
 def make_guidance(config, dino, direction, block, alpha, prediction_callback=None, iteration_callback=None,
@@ -157,6 +159,10 @@ def make_guidance(config, dino, direction, block, alpha, prediction_callback=Non
                                     prediction_callback=prediction_callback, **guidance_options(config))
     if objective != 'final':
         raise ValueError('objective must be one_step or final')
+    if settings.get('decode_mode', 'pipeline') != 'pipeline':
+        raise ValueError('Final objective requires pipeline decoding')
+    if settings.get('first_update_probe'):
+        raise ValueError('first_update_probe is supported by the one_step objective')
     if (settings.get('space') != 'activation' or settings.get('block_mode') != 'joint' or
             settings['max_relative_rms'] is not None or settings['preservation_weight'] != 0 or
             settings.get('selection') != 'last'):
@@ -210,9 +216,20 @@ def optimize(config, rows, direction_path, output, device):
     root.mkdir(parents=True, exist_ok=False)
     save_json(root / 'config.json', config)
     import diffusers, transformers
+    source_root = Path(__file__).resolve().parents[2]
+    source_files = ['src/models/flux.py', 'src/dino_adapter/cls_guidance.py',
+                    'src/dino_adapter/cls_images.py', 'src/dino_adapter/cls_trajectory.py',
+                    'src/dino_adapter/cls_experiment.py', 'src/dino_adapter/features.py',
+                    'src/dino_adapter/runtime.py']
     save_json(root / 'provenance.json', dict(direction_sha256=digest(direction_path),
               cls_signature=payload['cls_signature'], torch_version=str(torch.__version__),
-              diffusers_version=diffusers.__version__, transformers_version=transformers.__version__))
+              diffusers_version=diffusers.__version__, transformers_version=transformers.__version__,
+              source_sha256={name: digest(source_root / name) for name in source_files},
+              decode_mode=options['decode_mode'], torch_cuda_version=torch.version.cuda,
+              deterministic_algorithms=torch.are_deterministic_algorithms_enabled(),
+              cudnn_deterministic=torch.backends.cudnn.deterministic,
+              cudnn_benchmark=torch.backends.cudnn.benchmark,
+              float32_matmul_precision=torch.get_float32_matmul_precision()))
     pipe = load_pipeline(config, device)
     if settings.get('gradient_checkpointing', True):
         pipe.transformer.enable_gradient_checkpointing()
@@ -244,6 +261,7 @@ def optimize(config, rows, direction_path, output, device):
                     blocks=block if joint else ([block] if space == 'activation' else []),
                     block_mode=options['block_mode'], objective=objective, conditioning=conditioning,
                     correction_scaling=options['correction_scaling'], match_rms_adam=options['match_rms_adam'],
+                    decode_mode=options['decode_mode'],
                     generation_prompt=row['target_prompt'] if conditioning == 'paired_target' and alpha != 0 else row['prompt'])
                 def save_prediction(step, stage, decoded, stem=name):
                     preview = pipe.image_processor.postprocess(decoded.detach(), output_type='pil')[0]
@@ -274,6 +292,10 @@ def optimize(config, rows, direction_path, output, device):
                     reference = guidance.references[-1]
                     metrics.update(final_png_target_loss=float(.5 * (final_cls - reference['target_cls'][0]).square().sum(-1).mean()),
                         evaluated_to_png_cls_l2=float((final_cls - reference['selected_cls'][0]).norm(dim=-1).mean()))
+                elif guidance.references and guidance.references[-1]['step'] == config['inference_steps'] - 1:
+                    reference = guidance.references[-1]
+                    metrics.update(final_png_target_loss=float(.5 * (final_cls - reference['target_cls']).square().sum(-1).mean()),
+                        evaluated_to_png_cls_l2=float((final_cls - reference['selected_cls']).norm(dim=-1).mean()))
                 save_json(root / f'{name}.json', dict(sample=row, **intervention,
                           alpha=alpha, space=space, logs=guidance.logs, **metrics))
                 entries.append(dict(sample_id=row['id'], mode=space, **intervention,

@@ -1,10 +1,10 @@
 """Real DINO CLS guidance through FLUX and its decoded one-step estimate.
 
-Only an FP32 correction is optimized, either at a post-block image output or
-at the velocity output. No learned CLS predictor, inverse map, scheduler step,
+Only FP32 corrections are optimized, at one or several post-block image outputs
+or at the velocity output. No learned CLS predictor, inverse map, scheduler step,
 or image detachment is used within the differentiable objective.
 """
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 import math
 import torch
 import torch.nn.functional as F
@@ -37,19 +37,67 @@ def image_output(block, replacement=None, capture=None):
         handle.remove()
 
 
+@contextmanager
+def joint_image_outputs(blocks, corrections, scales, track_preservation=False):
+    """Add residuals to LIVE outputs; keep hooks installed through backward.
+
+    Replacing every output with a cached baseline would sever the gradient to
+    earlier blocks. Checkpoint recomputation must see the same residual hooks
+    as the forward, while diagnostics are recorded only on the initial pass.
+    """
+    stats = {}
+    with ExitStack() as stack:
+        for index, block in blocks.items():
+            def hook(module, inputs, output, index=index):
+                if not isinstance(output, tuple) or len(output) != 2:
+                    raise ValueError('Expected post-block (text, image)')
+                text, image = output
+                u, scale = corrections[index], scales[index]
+                if image.ndim != 3 or image.shape != u.shape:
+                    raise ValueError('Correction must match all image tokens [B,N,C]')
+                modified = (image.float() + scale * u).to(image.dtype)
+                if index not in stats or track_preservation:
+                    # No extra autograd branch when the penalty is disabled.
+                    with torch.set_grad_enabled(torch.is_grad_enabled() and track_preservation):
+                        applied = (modified.float() - image.float()) / scale
+                        squared_rms = applied.square().mean((1, 2))
+                    if index not in stats:
+                        stats[index] = dict(preservation=squared_rms.mean(),
+                                            actual_rms=squared_rms.detach().sqrt())
+                return text, modified
+            handle = block.register_forward_hook(hook)
+            stack.callback(handle.remove)
+        yield stats
+        if stats.keys() != blocks.keys():
+            raise RuntimeError('Not all selected double blocks were called')
+
+
 class CLSActivationGuidance:
     def __init__(self, dino, direction, block, steps=(0,), alpha=1., iterations=20,
                  learning_rate=.01, preservation_weight=1., max_relative_rms=.05,
                  resolution=(512, 512), optimization_space='activation', selection='best',
-                 prediction_callback=None):
-        if (type(block) is not int or type(iterations) is not int or
+                 prediction_callback=None, block_mode='independent'):
+        if block_mode not in ('independent', 'joint'):
+            raise ValueError('block_mode must be independent or joint')
+        if block_mode == 'joint':
+            if optimization_space != 'activation':
+                raise ValueError('Joint blocks require activation space')
+            if (not isinstance(block, (list, tuple)) or not block or
+                    any(type(b) is not int or b < 0 for b in block) or len(set(block)) != len(block)):
+                raise ValueError('Joint blocks must be distinct nonnegative integer indices')
+            blocks = tuple(block)
+        else:
+            if type(block) is not int or block < 0:
+                raise ValueError('Block must be a nonnegative integer index')
+            blocks = (block,)
+        if (type(iterations) is not int or
                 not isinstance(steps, (list, tuple)) or any(type(s) is not int for s in steps)):
             raise ValueError('Block, steps and iterations must be integer indices/counts')
         if (not isinstance(resolution, (list, tuple)) or len(resolution) != 2 or
                 any(type(s) is not int or s <= 0 for s in resolution)):
             raise ValueError('Resolution must be positive integer (height, width)')
         if (iterations < 1 or learning_rate <= 0 or preservation_weight < 0 or
-                block < 0 or not steps or min(steps) < 0 or
+                not steps or min(steps) < 0 or
                 len(set(steps)) != len(steps) or
                 not all(math.isfinite(x) for x in (alpha, learning_rate, preservation_weight))):
             raise ValueError('Invalid CLS guidance settings')
@@ -65,6 +113,7 @@ class CLSActivationGuidance:
             raise ValueError('Need a nonzero finite CLS mean-difference vector')
         self.dino, self.direction = dino, direction.detach().float()
         self.block, self.steps, self.alpha = block, set(steps), alpha
+        self.blocks, self.joint = blocks, block_mode == 'joint'
         self.iterations, self.lr = iterations, learning_rate
         self.preservation_weight, self.cap = preservation_weight, max_relative_rms
         self.resolution, self.space = resolution, optimization_space
@@ -98,7 +147,7 @@ class CLSActivationGuidance:
         for module in (pipe.transformer, pipe.vae, getattr(self.dino, 'model', None)):
             if isinstance(module, torch.nn.Module) and (module.training or any(p.requires_grad for p in module.parameters())):
                 raise ValueError('FLUX, VAE and DINO must be frozen and in eval mode')
-        if self.space == 'activation' and self.block >= len(pipe.transformer.transformer_blocks):
+        if self.space == 'activation' and max(self.blocks) >= len(pipe.transformer.transformer_blocks):
             raise ValueError('Selected double block does not exist')
         if getattr(pipe.transformer, 'is_cache_enabled', False):
             raise ValueError('Disable transformer caching for repeated differentiable CLS forwards')
@@ -113,18 +162,27 @@ class CLSActivationGuidance:
                 velocity = pipe.transformer(**kwargs)[0]
             self.logs.append(dict(step=step, alpha=0., bypass=True))
             return velocity
-        captured = []
+        first = self.blocks[0]
         if self.space == 'activation':
-            block = pipe.transformer.transformer_blocks[self.block]
-            with torch.no_grad(), image_output(block, capture=captured):
+            blocks = {i: pipe.transformer.transformer_blocks[i] for i in self.blocks}
+            captured = {i: [] for i in self.blocks}
+            with torch.no_grad(), ExitStack() as stack:
+                for i, block in blocks.items():
+                    stack.enter_context(image_output(block, capture=captured[i]))
                 baseline_velocity = pipe.transformer(**kwargs)[0].detach()
-            original = captured.pop()
+            originals = {i: captured[i].pop() for i in self.blocks}
         else:
             with torch.no_grad():
                 baseline_velocity = pipe.transformer(**kwargs)[0].detach()
-            original = baseline_velocity
-        base = original.float()
-        scale = base.square().mean(dim=(1, 2), keepdim=True).sqrt().clamp_min(1e-6)
+            originals = {first: baseline_velocity}
+        scales = {i: h.float().square().mean((1, 2), keepdim=True).sqrt().clamp_min(1e-6)
+                  for i, h in originals.items()}
+        layouts = {i: (h.shape, h.device) for i, h in originals.items()}
+        model_dtype = originals[first].dtype
+        if not self.joint:
+            base, scale = originals[first].float(), scales[first]
+        # Joint residuals need shapes and fixed RMS scales, not cached activations.
+        del originals
         velocity_scale = baseline_velocity.float().square().mean((1, 2), keepdim=True).sqrt().clamp_min(1e-6)
         with torch.no_grad():
             source_cls = self.cls_of_velocity(pipe, latents, baseline_velocity, sigma)
@@ -140,72 +198,102 @@ class CLSActivationGuidance:
                 self.prediction_callback(step, 'before', self.decode_velocity(pipe, latents, baseline_velocity, sigma))
         selected_loss, selected_index = baseline_loss, 0
         selected_velocity, selected_cls = baseline_velocity, source_cls
-        selected_rms = [0.] * base.shape[0]
+        selected_rms = [0.] * latents.shape[0]
+        selected_block_rms = {i: list(selected_rms) for i in self.blocks}
 
-        def objective(u):
-            modified = (base + scale * u).to(original.dtype)
-            if self.space == 'activation':
-                # Prefix has frozen inputs/weights. Gradients start at replacement H.
-                with image_output(block, replacement=modified):
+        @contextmanager
+        def objective(corrections):
+            # In joint mode this context remains open during autograd.grad, so
+            # checkpoint backward recomputes the same intervened transformer.
+            with ExitStack() as stack:
+                if self.joint:
+                    stats = stack.enter_context(joint_image_outputs(
+                        blocks, corrections, scales, self.preservation_weight != 0))
                     velocity = pipe.transformer(**kwargs)[0]
-            else:
-                velocity = modified
-            cls = self.cls_of_velocity(pipe, latents, velocity, sigma)
-            semantic = .5 * (cls - target).square().sum(-1).mean()
-            # Penalize actual model-input changes, including BF16 rounding.
-            applied = (modified.float() - base) / scale
-            preserve = applied.square().mean()
-            loss = semantic + self.preservation_weight * preserve
-            actual_rms = relative_rms(modified.float() - base, scale)
-            return loss, semantic, preserve, velocity, cls, actual_rms
+                    if stats.keys() != blocks.keys():
+                        raise RuntimeError('Not all selected double blocks were called')
+                    block_rms = {i: stats[i]['actual_rms'] for i in self.blocks}
+                    preserve = torch.stack([stats[i]['preservation'] for i in self.blocks]).mean()
+                    # Aggregate diagnostics; an optional cap is enforced PER block.
+                    actual_rms = torch.stack(list(block_rms.values())).square().mean(0).sqrt()
+                else:
+                    modified = (base + scale * corrections[first]).to(model_dtype)
+                    if self.space == 'activation':
+                        # Frozen prefix; gradients start at the one replacement H.
+                        with image_output(blocks[first], replacement=modified):
+                            velocity = pipe.transformer(**kwargs)[0]
+                    else:
+                        velocity = modified
+                    applied = (modified.float() - base) / scale
+                    preserve = applied.square().mean()
+                    actual_rms = relative_rms(modified.float() - base, scale)
+                    block_rms = {first: actual_rms}
+                cls = self.cls_of_velocity(pipe, latents, velocity, sigma)
+                semantic = .5 * (cls - target).square().sum(-1).mean()
+                loss = semantic if self.preservation_weight == 0 else semantic + self.preservation_weight * preserve
+                yield loss, semantic, preserve, velocity, cls, actual_rms, block_rms
 
         with torch.enable_grad():
-            u = torch.zeros_like(base, requires_grad=True)
-            optimizer = torch.optim.Adam([u], lr=self.lr)
+            corrections = {i: torch.zeros(shape, device=device, dtype=torch.float32, requires_grad=True)
+                           for i, (shape, device) in layouts.items()}
+            optimizer = torch.optim.Adam(list(corrections.values()), lr=self.lr)
             # Evaluate iterations 0..N; the final updated state is also assessed.
             for iteration in range(self.iterations + 1):
-                loss, semantic, preserve, velocity, cls, actual_rms = objective(u)
-                if not torch.isfinite(loss) or not torch.isfinite(velocity).all():
-                    raise RuntimeError('Nonfinite CLS objective/velocity')
-                value = float(loss.detach())
-                feasible = self.cap is None or bool((actual_rms <= self.cap).all())
-                # "last" takes every Adam update, even when the objective worsens.
-                # A separately requested cap must never be silently violated.
-                if self.selection == 'last' and iteration == self.iterations and not feasible:
-                    raise RuntimeError('Last iteration exceeds max_relative_rms after model-dtype rounding')
-                if ((self.selection == 'best' and value < selected_loss and feasible) or
-                        (self.selection == 'last' and iteration == self.iterations)):
-                    selected_loss, selected_index = value, iteration
-                    selected_velocity, selected_cls = velocity.detach().clone(), cls.detach().clone()
-                    selected_rms = actual_rms.detach().cpu().tolist()
-                entry = dict(step=step, iteration=iteration,
+                with objective(corrections) as result:
+                    loss, semantic, preserve, velocity, cls, actual_rms, block_rms = result
+                    if not torch.isfinite(loss) or not torch.isfinite(velocity).all():
+                        raise RuntimeError('Nonfinite CLS objective/velocity')
+                    value = float(loss.detach())
+                    feasible = self.cap is None or all(bool((rms <= self.cap).all()) for rms in block_rms.values())
+                    if self.selection == 'last' and iteration == self.iterations and not feasible:
+                        raise RuntimeError('Last iteration exceeds max_relative_rms after model-dtype rounding')
+                    if ((self.selection == 'best' and value < selected_loss and feasible) or
+                            (self.selection == 'last' and iteration == self.iterations)):
+                        selected_loss, selected_index = value, iteration
+                        selected_velocity, selected_cls = velocity.detach().clone(), cls.detach().clone()
+                        selected_rms = actual_rms.detach().cpu().tolist()
+                        selected_block_rms = {i: rms.detach().cpu().tolist() for i, rms in block_rms.items()}
+                    fp32_rms = {i: u.detach().square().mean((1, 2)).sqrt() for i, u in corrections.items()}
+                    entry = dict(step=step, iteration=iteration,
                                       semantic_loss=float(semantic.detach()), total_loss=value,
                                       preservation_loss=float(preserve.detach()), feasible=feasible,
                                       actual_relative_rms=actual_rms.detach().cpu().tolist(),
-                                      fp32_relative_rms=u.detach().square().mean((1, 2)).sqrt().cpu().tolist(),
+                                      fp32_relative_rms=torch.stack(list(fp32_rms.values())).square().mean(0).sqrt().cpu().tolist(),
                                       velocity_relative_rms=relative_rms(velocity.detach().float() - baseline_velocity.float(),
                                           velocity_scale).cpu().tolist())
-                self.logs.append(entry)
+                    if self.joint:
+                        entry['per_block'] = [dict(block=i, actual_relative_rms=block_rms[i].cpu().tolist(),
+                            fp32_relative_rms=fp32_rms[i].cpu().tolist()) for i in self.blocks]
+                    self.logs.append(entry)
+                    if iteration < self.iterations:
+                        optimizer.zero_grad(set_to_none=True)
+                        gradients = torch.autograd.grad(loss, tuple(corrections.values()))
+                        if any(not torch.isfinite(g).all() for g in gradients):
+                            raise RuntimeError('Nonfinite activation gradient')
+                        entry.update(gradient_rms=float(torch.stack([g.square().mean() for g in gradients]).mean().sqrt()),
+                                     gradient_nonzero=any(bool(torch.count_nonzero(g)) for g in gradients),
+                                     projected=False)
+                        for index, (u, gradient) in enumerate(zip(corrections.values(), gradients)):
+                            u.grad = gradient
+                            if self.joint:
+                                entry['per_block'][index].update(gradient_rms=float(gradient.square().mean().sqrt()),
+                                    gradient_nonzero=bool(torch.count_nonzero(gradient)), projected=False)
+                        del gradients, gradient
+                # All residual hooks are removed before changing their parameters.
                 if iteration < self.iterations:
-                    optimizer.zero_grad(set_to_none=True)
-                    gradient = torch.autograd.grad(loss, u)[0]
-                    if not torch.isfinite(gradient).all():
-                        raise RuntimeError('Nonfinite activation gradient')
-                    entry.update(gradient_rms=float(gradient.square().mean().sqrt()),
-                                 gradient_nonzero=bool(torch.count_nonzero(gradient)),
-                                 projected=False)
-                    u.grad = gradient
                     optimizer.step()
                     with torch.no_grad():
-                        if not torch.isfinite(u).all():
-                            raise RuntimeError('Nonfinite Adam correction')
-                        if self.cap is not None:
-                            norm = u.square().mean(dim=(1, 2), keepdim=True).sqrt()
-                            entry['projected'] = bool((norm > self.cap * .99).any())
-                            # Small margin for the following BF16 rounding.
-                            u.mul_((self.cap * .99 / norm.clamp_min(1e-12)).clamp(max=1))
-                    del gradient
-                del loss, semantic, preserve, velocity, cls, actual_rms
+                        for index, u in enumerate(corrections.values()):
+                            if not torch.isfinite(u).all():
+                                raise RuntimeError('Nonfinite Adam correction')
+                            if self.cap is not None:
+                                norm = u.square().mean(dim=(1, 2), keepdim=True).sqrt()
+                                projected = bool((norm > self.cap * .99).any())
+                                entry['projected'] |= projected
+                                if self.joint:
+                                    entry['per_block'][index]['projected'] = projected
+                                u.mul_((self.cap * .99 / norm.clamp_min(1e-12)).clamp(max=1))
+                del result, loss, semantic, preserve, velocity, cls, actual_rms, block_rms
         if getattr(pipe.scheduler, 'step_index', None) != index_before:
             raise RuntimeError('Scheduler advanced during inner optimization')
         self.logs.append(dict(step=step, selected_iteration=selected_index,
@@ -213,12 +301,15 @@ class CLSActivationGuidance:
                               selection=self.selection, max_relative_rms=self.cap,
                               preservation_weight=self.preservation_weight,
                               learning_rate=self.lr, iterations=self.iterations,
-                              sigma=float(sigma), model_tensor_dtype=str(original.dtype),
-                              correction_dtype=str(base.dtype),
+                              sigma=float(sigma), model_tensor_dtype=str(model_dtype),
+                              correction_dtype='torch.float32',
                               selected_relative_rms=selected_rms,
                               final_semantic_loss=float(.5 * (selected_cls - target).square().sum(-1).mean()),
                               velocity_relative_rms=relative_rms(selected_velocity.float() - baseline_velocity.float(),
                                   velocity_scale).cpu().tolist()))
+        if self.joint:
+            self.logs[-1].update(block_mode='joint', blocks=list(self.blocks),
+                selected_per_block=[dict(block=i, selected_relative_rms=selected_block_rms[i]) for i in self.blocks])
         if self.prediction_callback is not None:
             with torch.no_grad():
                 self.prediction_callback(step, 'after', self.decode_velocity(pipe, latents, selected_velocity, sigma))

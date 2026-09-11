@@ -129,4 +129,8 @@ train-pair CLS mean-difference extraction (including reuse of cached CLS tensors
 The `cls_guidance_all_steps.json` and `cls_velocity_guidance_all_steps.json` configs
 run Adam on all four steps without an RMS cap, preservation penalty or best-iterate
 selection, and save each step's before/after one-step predictions.
+`cls_joint_all_blocks_all_steps.json` jointly optimizes image-token residuals at
+every double block on all four steps, using one shared CLS objective. Residuals
+are added to live outputs so gradients reach earlier blocks; checkpoint backward
+uses the same interventions. This config also disables caps, penalties and rollback.
 See [CLS_GUIDANCE.md](docs/CLS_GUIDANCE.md) for server commands and limitations.

@@ -36,7 +36,7 @@ def tiny_pipeline(dtype=torch.float32):
 
 
 @pytest.mark.parametrize('dtype', [torch.float32, torch.bfloat16])
-@pytest.mark.parametrize('space', ['activation', 'velocity'])
+@pytest.mark.parametrize('space', ['activation', 'velocity', 'joint'])
 def test_full_shift_loop_with_real_vae_zero_control_and_bf16(dtype, space, monkeypatch):
     pipe, dino, kwargs, direction = tiny_pipeline(dtype)
     pipe.transformer.enable_gradient_checkpointing()
@@ -55,12 +55,14 @@ def test_full_shift_loop_with_real_vae_zero_control_and_bf16(dtype, space, monke
         assert result.shape == (1, 3, 8, 12) and torch.isfinite(result).all()
         return result
     baseline = run()
+    block = [0, 1] if space == 'joint' else 1
     options = dict(steps=[0, 1], iterations=3, preservation_weight=.001,
-                   resolution=(8, 12), optimization_space=space)
-    zero = CLSActivationGuidance(dino, direction, 1, alpha=0, **options)
+                   resolution=(8, 12), optimization_space='activation' if space == 'joint' else space,
+                   block_mode='joint' if space == 'joint' else 'independent')
+    zero = CLSActivationGuidance(dino, direction, block, alpha=0, **options)
     torch.testing.assert_close(run(zero), baseline, rtol=0, atol=0)
     assert len(zero.logs) == 2 and all(log['bypass'] for log in zero.logs)
-    guide = CLSActivationGuidance(dino, direction, 1, **options)
+    guide = CLSActivationGuidance(dino, direction, block, **options)
     run(guide)
     selected = [log for log in guide.logs if 'selected_iteration' in log]
     assert len(selected) == 2 and len(guide.references) == 2
@@ -68,6 +70,9 @@ def test_full_shift_loop_with_real_vae_zero_control_and_bf16(dtype, space, monke
     for log in selected:
         assert log['final_semantic_loss'] <= log['baseline_semantic_loss']
         assert max(log['selected_relative_rms']) <= guide.cap
+        if space == 'joint':
+            assert log['blocks'] == [0, 1]
+            assert all(max(b['selected_relative_rms']) <= guide.cap for b in log['selected_per_block'])
     for module in (pipe.transformer, pipe.vae, dino.model):
         assert all(p.grad is None for p in module.parameters())
     assert all(not block._forward_hooks for block in pipe.transformer.transformer_blocks)
@@ -93,11 +98,13 @@ def test_noninteger_guidance_settings_fail_before_model_loading(settings):
         CLSActivationGuidance(None, torch.tensor([.1, -.1]), **kwargs)
 
 
-@pytest.mark.parametrize('space', ['activation', 'velocity'])
+@pytest.mark.parametrize('space', ['activation', 'velocity', 'joint'])
 def test_all_four_steps_use_last_adam_state_and_record_predictions(space, monkeypatch):
     from pathlib import Path
     from src.dino_adapter.cls_experiment import read_cls_config, guidance_options
     filename = 'cls_guidance_all_steps.json' if space == 'activation' else 'cls_velocity_guidance_all_steps.json'
+    if space == 'joint':
+        filename = 'cls_joint_all_blocks_all_steps.json'
     config = read_cls_config(Path(__file__).resolve().parents[1] / 'configs' / filename)
     options = guidance_options(config)
     assert options['steps'] == [0, 1, 2, 3]
@@ -117,7 +124,8 @@ def test_all_four_steps_use_last_adam_state_and_record_predictions(space, monkey
         assert not torch.is_grad_enabled() and not decoded.requires_grad
         assert decoded.shape == (1, 3, 8, 12) and torch.isfinite(decoded).all()
         snapshots.append((step, stage))
-    guide = CLSActivationGuidance(dino, direction, 1, **options, prediction_callback=capture)
+    guide = CLSActivationGuidance(dino, direction, [0, 1] if space == 'joint' else 1,
+                                  **options, prediction_callback=capture)
     output = pipe(**kwargs, generator=torch.Generator('cpu').manual_seed(15), activation_guidance=guide).images
     assert torch.isfinite(output).all()
     assert scheduler_calls == [None, 1, 2, 3]
@@ -127,18 +135,24 @@ def test_all_four_steps_use_last_adam_state_and_record_predictions(space, monkey
     assert all(log['correction_dtype'] == 'torch.float32' for log in selected)
     updates = [log for log in guide.logs if 'gradient_nonzero' in log]
     assert len(updates) == 8 and all(log['gradient_nonzero'] and not log['projected'] for log in updates)
+    if space == 'joint':
+        assert config['blocks'] == 'all'
+        for log in updates:
+            assert [b['block'] for b in log['per_block']] == [0, 1]
+            assert all(b['gradient_nonzero'] and b['gradient_rms'] > 0 and not b['projected']
+                       for b in log['per_block'])
     assert snapshots == [(step, stage) for step in range(4) for stage in ('before', 'after')]
     assert len(guide.references) == 4
     assert all(not block._forward_hooks for block in pipe.transformer.transformer_blocks)
     assert all(p.grad is None for module in (pipe.transformer, pipe.vae, dino.model) for p in module.parameters())
 
 
-def test_experiment_wires_unbounded_options_and_saves_step_images(tmp_path, monkeypatch):
+@pytest.mark.parametrize('filename', ['cls_velocity_guidance_all_steps.json', 'cls_joint_all_blocks_all_steps.json'])
+def test_experiment_wires_unbounded_options_and_saves_step_images(tmp_path, monkeypatch, filename):
     import json
     from pathlib import Path
     from src.dino_adapter import cls_experiment
-    config = cls_experiment.read_cls_config(Path(__file__).resolve().parents[1] /
-                                          'configs/cls_velocity_guidance_all_steps.json')
+    config = cls_experiment.read_cls_config(Path(__file__).resolve().parents[1] / 'configs' / filename)
     config.update(width=16, height=16, dino_size=8, alphas=[0., 1.])
     config['cls_optimization']['iterations'] = 1
     pipe, dino, inputs, direction = tiny_pipeline()
@@ -157,6 +171,8 @@ def test_experiment_wires_unbounded_options_and_saves_step_images(tmp_path, monk
     output = tmp_path / 'output'
     cls_experiment.optimize(config, rows, direction_path, output, 'cpu')
     entries = json.loads((output / 'generations.json').read_text())
+    # Joint mode produces one edited trajectory per alpha, not one per block.
+    assert len(entries) == 3
     zero, edited = entries[1:]
     assert zero['alpha'] == 0 and zero['baseline_pixel_max_abs'] == 0
     stem = Path(edited['image']).stem
@@ -169,3 +185,8 @@ def test_experiment_wires_unbounded_options_and_saves_step_images(tmp_path, monk
     assert all(log['selection'] == 'last' and log['selected_iteration'] == 1 and
                log['max_relative_rms'] is None and log['preservation_weight'] == 0 for log in selected)
     assert len(torch.load(output / f'{stem}_cls_targets.pt', weights_only=True)) == 4
+    if config['cls_optimization'].get('block_mode') == 'joint':
+        assert details['block_mode'] == edited['block_mode'] == 'joint'
+        assert details['blocks'] == edited['blocks'] == [0, 1]
+        assert details['block'] is None and edited['block'] is None
+        assert all(log['blocks'] == [0, 1] for log in selected)

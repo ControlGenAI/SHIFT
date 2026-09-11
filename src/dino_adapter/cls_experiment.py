@@ -142,7 +142,8 @@ def guidance_options(config):
                 learning_rate=settings['learning_rate'], preservation_weight=settings['preservation_weight'],
                 max_relative_rms=settings['max_relative_rms'], selection=settings.get('selection', 'best'),
                 resolution=(config['height'], config['width']),
-                optimization_space=settings.get('space', 'activation'))
+                optimization_space=settings.get('space', 'activation'),
+                block_mode=settings.get('block_mode', 'independent'))
 
 
 def optimize(config, rows, direction_path, output, device):
@@ -164,7 +165,8 @@ def optimize(config, rows, direction_path, output, device):
         raise ValueError('Invalid optimization timestep')
     # Validate optimization settings without model loading.
     options = guidance_options(config)
-    CLSActivationGuidance(None, payload['direction'], 0, alpha=config['alphas'][0], **options)
+    joint = options['block_mode'] == 'joint'
+    CLSActivationGuidance(None, payload['direction'], [0] if joint else 0, alpha=config['alphas'][0], **options)
     root = Path(output)
     root.mkdir(parents=True, exist_ok=False)
     save_json(root / 'config.json', config)
@@ -177,6 +179,7 @@ def optimize(config, rows, direction_path, output, device):
         pipe.transformer.enable_gradient_checkpointing()
     dino = DinoFeatures(config['dino_model'], config['dino_size'], device, config.get('dino_revision'))
     blocks = selected_blocks(config, len(pipe.transformer.transformer_blocks)) if space == 'activation' else [0]
+    conditions = [blocks] if joint else blocks
     entries = []
     for row in rows:
         baseline = generate(pipe, config, row['prompt'], row['seed'])
@@ -184,9 +187,13 @@ def optimize(config, rows, direction_path, output, device):
         with torch.no_grad():
             _, baseline_cls = dino(baseline, None)
         entries.append(dict(sample_id=row['id'], mode='baseline', image=f"{row['id']}_baseline.png"))
-        for block in blocks:
+        for block in conditions:
             for index, alpha in enumerate(config['alphas']):
-                name = f"{row['id']}_{space}_block{block}_alpha{index}"
+                block_label = 'joint_blocks' + '-'.join(map(str, block)) if joint else f'block{block}'
+                name = f"{row['id']}_{space}_{block_label}_alpha{index}"
+                intervention = dict(block=None if joint or space != 'activation' else block,
+                    blocks=block if joint else ([block] if space == 'activation' else []),
+                    block_mode=options['block_mode'])
                 def save_prediction(step, stage, decoded, stem=name):
                     preview = pipe.image_processor.postprocess(decoded.detach(), output_type='pil')[0]
                     preview.save(root / f'{stem}_step{step}_{stage}.png')
@@ -207,9 +214,9 @@ def optimize(config, rows, direction_path, output, device):
                 delta = np.asarray(image, dtype=np.float32) - np.asarray(baseline, dtype=np.float32)
                 metrics = dict(final_cls_removal_proxy=projected_removal,
                                baseline_pixel_mae=float(abs(delta).mean()), baseline_pixel_max_abs=float(abs(delta).max()))
-                save_json(root / f'{name}.json', dict(sample=row, block=block if space == 'activation' else None,
+                save_json(root / f'{name}.json', dict(sample=row, **intervention,
                           alpha=alpha, space=space, logs=guidance.logs, **metrics))
-                entries.append(dict(sample_id=row['id'], mode=space, block=block if space == 'activation' else None,
+                entries.append(dict(sample_id=row['id'], mode=space, **intervention,
                                     alpha=alpha, image=f'{name}.png', **metrics))
                 save_json(root / 'generations.json', entries)
     save_json(root / 'generations.json', entries)

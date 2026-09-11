@@ -1,0 +1,211 @@
+[
+  {
+    "block": 0,
+    "z_token_norm": 0.44848998039960863,
+    "dz_per_token": 0.046498578041791916,
+    "dz_mean_per_token": 0.04150313511490822,
+    "dz_over_z": 0.10367807548423102,
+    "dz_mean_over_z": 0.09253971533082757,
+    "mean_fraction_of_per_token": 0.8925678346035893,
+    "dh_norm": 18.89167594909668,
+    "dh_mean_norm": 18.588275909423828
+  },
+  {
+    "block": 1,
+    "z_token_norm": 0.6656325733661652,
+    "dz_per_token": 0.058455225080251694,
+    "dz_mean_per_token": 0.04250842705368996,
+    "dz_over_z": 0.08781905726854418,
+    "dz_mean_over_z": 0.06386169901319722,
+    "mean_fraction_of_per_token": 0.727196362606272,
+    "dh_norm": 77.85494232177734,
+    "dh_mean_norm": 74.56372833251953
+  },
+  {
+    "block": 2,
+    "z_token_norm": 0.671138876080513,
+    "dz_per_token": 0.056676190346479416,
+    "dz_mean_per_token": 0.042778171598911285,
+    "dz_over_z": 0.08444778326278966,
+    "dz_mean_over_z": 0.06373967165892415,
+    "mean_fraction_of_per_token": 0.7547820581693095,
+    "dh_norm": 122.5332260131836,
+    "dh_mean_norm": 117.19113159179688
+  },
+  {
+    "block": 3,
+    "z_token_norm": 0.7150518351793289,
+    "dz_per_token": 0.06506597250699997,
+    "dz_mean_per_token": 0.04180905967950821,
+    "dz_over_z": 0.09099476332465041,
+    "dz_mean_over_z": 0.058469970458886876,
+    "mean_fraction_of_per_token": 0.6425641248197785,
+    "dh_norm": 148.84544372558594,
+    "dh_mean_norm": 142.13595581054688
+  },
+  {
+    "block": 4,
+    "z_token_norm": 0.7304047191143036,
+    "dz_per_token": 0.056523460894823074,
+    "dz_mean_per_token": 0.03701013699173927,
+    "dz_over_z": 0.07738649465924044,
+    "dz_mean_over_z": 0.050670725452894326,
+    "mean_fraction_of_per_token": 0.6547747856523943,
+    "dh_norm": 180.36106872558594,
+    "dh_mean_norm": 172.2996368408203
+  },
+  {
+    "block": 5,
+    "z_token_norm": 0.7371760714054107,
+    "dz_per_token": 0.06946200877428055,
+    "dz_mean_per_token": 0.044911619275808334,
+    "dz_over_z": 0.09422716155429826,
+    "dz_mean_over_z": 0.060923870182309735,
+    "mean_fraction_of_per_token": 0.6465637845538035,
+    "dh_norm": 239.72415161132812,
+    "dh_mean_norm": 226.86553955078125
+  },
+  {
+    "block": 6,
+    "z_token_norm": 0.7470287823677063,
+    "dz_per_token": 0.06484910845756531,
+    "dz_mean_per_token": 0.042989786714315414,
+    "dz_over_z": 0.0868093840400984,
+    "dz_mean_over_z": 0.05754769793214576,
+    "mean_fraction_of_per_token": 0.6629202426498466,
+    "dh_norm": 248.33236694335938,
+    "dh_mean_norm": 232.6857452392578
+  },
+  {
+    "block": 7,
+    "z_token_norm": 0.7610819160938262,
+    "dz_per_token": 0.07851048558950424,
+    "dz_mean_per_token": 0.04467352479696274,
+    "dz_over_z": 0.10315641973527782,
+    "dz_mean_over_z": 0.05869739360809537,
+    "mean_fraction_of_per_token": 0.5690134822314099,
+    "dh_norm": 252.52613830566406,
+    "dh_mean_norm": 230.62342834472656
+  },
+  {
+    "block": 8,
+    "z_token_norm": 0.7784833067655563,
+    "dz_per_token": 0.08199760317802429,
+    "dz_mean_per_token": 0.046075500547885895,
+    "dz_over_z": 0.10532994409181112,
+    "dz_mean_over_z": 0.059186240921877256,
+    "mean_fraction_of_per_token": 0.5619127725947278,
+    "dh_norm": 279.291015625,
+    "dh_mean_norm": 245.0557861328125
+  },
+  {
+    "block": 9,
+    "z_token_norm": 0.7906491953134537,
+    "dz_per_token": 0.08246377110481262,
+    "dz_mean_per_token": 0.044238053262233734,
+    "dz_over_z": 0.10429881114609846,
+    "dz_mean_over_z": 0.055951556675771376,
+    "mean_fraction_of_per_token": 0.5364544050017618,
+    "dh_norm": 290.45623779296875,
+    "dh_mean_norm": 240.07339477539062
+  },
+  {
+    "block": 10,
+    "z_token_norm": 0.7856726723909379,
+    "dz_per_token": 0.08360259979963303,
+    "dz_mean_per_token": 0.04522806033492088,
+    "dz_over_z": 0.10640894451020659,
+    "dz_mean_over_z": 0.05756603471682943,
+    "mean_fraction_of_per_token": 0.5409886826883034,
+    "dh_norm": 352.87530517578125,
+    "dh_mean_norm": 298.0063171386719
+  },
+  {
+    "block": 11,
+    "z_token_norm": 0.8009060668945313,
+    "dz_per_token": 0.08995208889245987,
+    "dz_mean_per_token": 0.04631870612502098,
+    "dz_over_z": 0.11231290735659438,
+    "dz_mean_over_z": 0.05783288208143957,
+    "mean_fraction_of_per_token": 0.514926409106477,
+    "dh_norm": 425.71746826171875,
+    "dh_mean_norm": 349.46453857421875
+  },
+  {
+    "block": 12,
+    "z_token_norm": 0.8039309817552567,
+    "dz_per_token": 0.08979576081037521,
+    "dz_mean_per_token": 0.04711329564452171,
+    "dz_over_z": 0.11169585803786329,
+    "dz_mean_over_z": 0.05860365717173538,
+    "mean_fraction_of_per_token": 0.5246717130000432,
+    "dh_norm": 508.23052978515625,
+    "dh_mean_norm": 371.7980041503906
+  },
+  {
+    "block": 13,
+    "z_token_norm": 0.788071921467781,
+    "dz_per_token": 0.0824447050690651,
+    "dz_mean_per_token": 0.04372755438089371,
+    "dz_over_z": 0.10461571186994219,
+    "dz_mean_over_z": 0.05548675595426785,
+    "mean_fraction_of_per_token": 0.530386449248166,
+    "dh_norm": 557.1502075195312,
+    "dh_mean_norm": 417.0754699707031
+  },
+  {
+    "block": 14,
+    "z_token_norm": 0.8272036737203599,
+    "dz_per_token": 0.0911584421992302,
+    "dz_mean_per_token": 0.04721841961145401,
+    "dz_over_z": 0.11020072213804837,
+    "dz_mean_over_z": 0.05708197522756218,
+    "mean_fraction_of_per_token": 0.5179818618253302,
+    "dh_norm": 610.6741333007812,
+    "dh_mean_norm": 467.11383056640625
+  },
+  {
+    "block": 15,
+    "z_token_norm": 0.822340436577797,
+    "dz_per_token": 0.08852697908878326,
+    "dz_mean_per_token": 0.045180462300777435,
+    "dz_over_z": 0.10765246989092725,
+    "dz_mean_over_z": 0.054941311762313136,
+    "mean_fraction_of_per_token": 0.5103581164276054,
+    "dh_norm": 574.5339965820312,
+    "dh_mean_norm": 405.7425231933594
+  },
+  {
+    "block": 16,
+    "z_token_norm": 0.8195952206850052,
+    "dz_per_token": 0.0905848816037178,
+    "dz_mean_per_token": 0.04528043419122696,
+    "dz_over_z": 0.11052392610099451,
+    "dz_mean_over_z": 0.05524731361095817,
+    "mean_fraction_of_per_token": 0.4998674545860261,
+    "dh_norm": 637.0375366210938,
+    "dh_mean_norm": 431.45660400390625
+  },
+  {
+    "block": 17,
+    "z_token_norm": 0.8375044929981231,
+    "dz_per_token": 0.08943630754947662,
+    "dz_mean_per_token": 0.044964369386434555,
+    "dz_over_z": 0.10678904805550345,
+    "dz_mean_over_z": 0.053688511240661874,
+    "mean_fraction_of_per_token": 0.5027529715664976,
+    "dh_norm": 747.460693359375,
+    "dh_mean_norm": 530.7274169921875
+  },
+  {
+    "block": 18,
+    "z_token_norm": 0.8370303815603256,
+    "dz_per_token": 0.09212590754032135,
+    "dz_mean_per_token": 0.04799465835094452,
+    "dz_over_z": 0.1100628000725464,
+    "dz_mean_over_z": 0.05733920704464357,
+    "mean_fraction_of_per_token": 0.5209680928238171,
+    "dh_norm": 2098.32470703125,
+    "dh_mean_norm": 729.7598266601562
+  }
+]

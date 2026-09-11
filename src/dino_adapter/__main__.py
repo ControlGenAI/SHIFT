@@ -17,9 +17,20 @@ def main():
     train.add_argument('--dataset', required=True)
     train.add_argument('--output', required=True)
     train.add_argument('--device', default='cuda:0')
-    directions = sub.add_parser('directions', help='Train-pair directions; uses saved tensors, no models')
+    directions = sub.add_parser('directions', help='Legacy DINO-feature directions; saved tensors only')
     directions.add_argument('--dataset', required=True)
     directions.add_argument('--output', required=True)
+    adapter_z = sub.add_parser(
+        'directions-adapter-z',
+        help='Adapter-space directions mean(F(h+).z-F(h-).z); needs adapters + activations')
+    adapter_z.add_argument('--dataset', required=True)
+    adapter_z.add_argument('--adapters', required=True)
+    adapter_z.add_argument('--output', required=True)
+    adapter_z.add_argument('--device', default='cuda:0')
+    adapter_z.add_argument('--roi', choices=['full', 'config'], default='full')
+    adapter_z.add_argument('--max-pairs', type=int, default=100)
+    adapter_z.add_argument('--workers', type=int, default=16)
+    adapter_z.add_argument('--blocks', type=int, nargs='*')
     steer = sub.add_parser('steer', help='Image post-block adapter/control sweeps, one block at a time')
     steer.add_argument('--dataset', required=True)
     steer.add_argument('--adapters', help='Required only for adapter_comparison mode')
@@ -43,6 +54,11 @@ def main():
     elif args.command == 'directions':
         from .directions import build_directions
         build_directions(config, args.dataset, args.output)
+    elif args.command == 'directions-adapter-z':
+        from .directions import build_adapter_z_directions
+        build_adapter_z_directions(
+            config, args.dataset, args.adapters, args.output, args.device,
+            roi=args.roi, max_pairs=args.max_pairs, workers=args.workers, blocks=args.blocks)
     elif args.command == 'steer':
         from .steering import steer
         steer(config, args.dataset, args.adapters, args.directions, args.output, args.device,

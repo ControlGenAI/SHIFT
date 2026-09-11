@@ -1,0 +1,45 @@
+{
+  "comment": "Exact settings used for figures/dino_adapter_steering/renorm (all double blocks, step 0).",
+  "base_config": "configs/dino_adapter.json",
+  "directions_command": [
+    "python", "-m", "src.dino_adapter", "directions-adapter-z",
+    "--config", "configs/dino_adapter.json",
+    "--dataset", "out/dataset200",
+    "--adapters", "out/adapters200",
+    "--roi", "full",
+    "--max-pairs", "100",
+    "--workers", "24",
+    "--output", "out/dirv3_full100.pt",
+    "--device", "cuda:0"
+  ],
+  "demo_command": [
+    "python", "scripts/dino_adapter_demo_renorm.py",
+    "--config", "configs/dino_adapter.json",
+    "--dataset", "out/dataset200",
+    "--adapters", "out/adapters200",
+    "--directions", "out/dirv3_full100.pt",
+    "--output", "out/demo_renorm",
+    "--split", "test",
+    "--n", "5",
+    "--alphas", "0.005", "0.01", "0.02", "0.05",
+    "--variants", "adapter_pertoken", "adapter_mean", "image_pertoken", "image_mean",
+    "--device", "cuda:0"
+  ],
+  "intervention": {
+    "blocks": "all",
+    "step": 0,
+    "simultaneous": true,
+    "hook": "MultiImageBlockHook",
+    "edits": {
+      "adapter_pertoken": "RenormAdapterEdit(adapters[b], vectors[b]['z'], alpha, renorm=True)",
+      "adapter_mean": "RenormAdapterEdit(adapters[b], vectors[b]['z_mean'], alpha, renorm=True)",
+      "image_pertoken": "RenormImageEdit(vectors[b]['h'], alpha, renorm=True)",
+      "image_mean": "RenormImageEdit(vectors[b]['h_mean'], alpha, renorm=True)"
+    },
+    "direction_space": "adapter_z",
+    "direction_roi": "full",
+    "n_train_pairs": 100,
+    "renorm": true
+  },
+  "example_sample_id": "glasses_181_1"
+}

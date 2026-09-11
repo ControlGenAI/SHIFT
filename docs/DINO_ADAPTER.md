@@ -56,6 +56,29 @@ python -m src.dino_adapter directions \
   --output experiments/dino_adapter/directions.pt
 ```
 
+`directions` — **legacy**: `z` из разности DINO-патчей изображения, `h` из post-block
+активаций. Для стиринга через `F⁻¹` нужен вектор в пространстве адаптера:
+
+```bash
+python -m src.dino_adapter directions-adapter-z \
+  --dataset experiments/dino_adapter/dataset \
+  --adapters experiments/dino_adapter/adapters \
+  --roi full --max-pairs 100 \
+  --output experiments/dino_adapter/dirv3_full100.pt \
+  --device cuda:0
+```
+
+Это `mean(F(h_with).z − F(h_without).z)` по train-парам плюс `z_mean` /
+`h_mean` (один вектор, broadcast на все токены). Пример одновременного
+вмешательства во все double-блоки на шаге 0 с norm-preserving edit:
+
+`scripts/dino_adapter_demo_renorm.py` + конфиги
+`configs/dino_adapter_renorm_demo.json` /
+`configs/dino_adapter_global_mean_demo.json`. Классы `RenormAdapterEdit` /
+`RenormImageEdit` и `MultiImageBlockHook` лежат в `src/dino_adapter/`.
+Примерные полоски и `generations.json` — в `figures/dino_adapter_steering/`.
+Обычный `steer` по-прежнему правит **один блок за прогон**.
+
 `train` **не генерирует изображения и не загружает FLUX/DINO**: только адаптеры
 и готовые CPU tensors. Обучение последовательное по блокам; на GPU в каждый
 момент один адаптер и batch токенов. Статистика нормализации и направления

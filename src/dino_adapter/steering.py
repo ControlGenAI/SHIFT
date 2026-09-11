@@ -78,6 +78,70 @@ class DirectImageEdit:
         return changed
 
 
+def _unit(vector, eps=1e-6):
+    return vector / vector.norm(dim=-1, keepdim=True).clamp(min=eps)
+
+
+def _renormalize(edited, original_norm, eps=1e-6):
+    """Match apply_steering_with_injection_sd35: unit direction, restore token norm."""
+    return _unit(edited, eps) * original_norm
+
+
+class RenormImageEdit:
+    """h' = renorm(h - alpha * |h_token| * unit(direction)).
+
+    Alpha is a fraction of the per-token norm, so a shared grid is comparable
+    across per-token and mean-vector directions.
+    """
+
+    def __init__(self, direction, alpha, renorm=True):
+        self.direction, self.alpha, self.renorm = direction, alpha, renorm
+        self.stats = {}
+
+    @torch.no_grad()
+    def __call__(self, h):
+        x = h.float()
+        direction = self.direction.to(device=x.device, dtype=x.dtype)
+        if direction.shape != x.shape[-2:]:
+            raise ValueError('Direction must match [tokens, channels]')
+        norms = x.norm(dim=-1, keepdim=True)
+        changed = x - self.alpha * norms * _unit(direction)
+        if self.renorm:
+            changed = _renormalize(changed, norms)
+        self.stats = dict(edit_rms=rms(changed - x), activation_rms=rms(x),
+                          norm_drift=float((changed.norm(dim=-1) - norms.squeeze(-1)).abs().max()))
+        return changed
+
+
+class RenormAdapterEdit:
+    """z' = renorm(z - alpha * |z_token| * unit(direction)); h' = F^-1(z', r)."""
+
+    def __init__(self, adapter, direction, alpha, renorm=True):
+        self.adapter, self.direction, self.alpha, self.renorm = adapter, direction, alpha, renorm
+        self.stats = {}
+
+    @torch.no_grad()
+    def __call__(self, h):
+        z, r = self.adapter.encode(h)
+        direction = self.direction.to(device=z.device, dtype=z.dtype)
+        if direction.shape[-1] != self.adapter.z_dim:
+            raise ValueError('Direction dimension differs from adapter z')
+        if direction.ndim > 1 and direction.shape[-2] != z.shape[-2]:
+            raise ValueError('Direction token count differs from the image-token grid')
+        norms = z.norm(dim=-1, keepdim=True)
+        changed_z = z - self.alpha * norms * _unit(direction)
+        if self.renorm:
+            changed_z = _renormalize(changed_z, norms)
+        changed = self.adapter.decode(changed_z, r)
+        if not torch.isfinite(changed).all():
+            raise RuntimeError('Nonfinite inverse after intervention')
+        self.stats = dict(
+            edit_rms=rms(changed - h.float()), activation_rms=rms(h),
+            z_norm_drift=float((changed_z.norm(dim=-1) - norms.squeeze(-1)).abs().max()),
+            z_cosine_shift=float(torch.nn.functional.cosine_similarity(changed_z, z, dim=-1).mean()))
+        return changed
+
+
 def _pixel_diff(a, b):
     return int(np.abs(np.asarray(a.convert('RGB'), dtype=np.int16)
                       - np.asarray(b.convert('RGB'), dtype=np.int16)).max())

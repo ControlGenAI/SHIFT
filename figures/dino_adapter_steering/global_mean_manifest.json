@@ -1,0 +1,21 @@
+{
+  "sample_id": "glasses_181_1",
+  "variants": [
+    "adapter_mean",
+    "image_mean"
+  ],
+  "alphas": [
+    0.025,
+    0.03,
+    0.035,
+    0.04
+  ],
+  "renorm": true,
+  "directions": "out/dirv3_full100.pt",
+  "config": "configs/dino_adapter_global_mean_demo.json",
+  "images": [
+    "global_mean/glasses_181_1/compare_a0.03.png",
+    "global_mean/glasses_181_1/strip_adapter_mean.png",
+    "global_mean/glasses_181_1/strip_image_mean.png"
+  ]
+}

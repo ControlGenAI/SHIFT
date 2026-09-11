@@ -1,0 +1,159 @@
+[
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "adapter_pertoken",
+    "alpha": 0.005,
+    "renorm": true,
+    "image": "glasses_181_1/adapter_pertoken_a0.005.png",
+    "edit_rms": 0.3997287154197693,
+    "activation_rms": 18.949081420898438,
+    "z_norm_drift": 1.1920928955078125e-07,
+    "z_cosine_shift": 0.9999881982803345
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "adapter_pertoken",
+    "alpha": 0.01,
+    "renorm": true,
+    "image": "glasses_181_1/adapter_pertoken_a0.01.png",
+    "edit_rms": 0.7972027063369751,
+    "activation_rms": 19.337169647216797,
+    "z_norm_drift": 1.1920928955078125e-07,
+    "z_cosine_shift": 0.999952495098114
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "adapter_pertoken",
+    "alpha": 0.02,
+    "renorm": true,
+    "image": "glasses_181_1/adapter_pertoken_a0.02.png",
+    "edit_rms": 1.5769062042236328,
+    "activation_rms": 20.587947845458984,
+    "z_norm_drift": 1.1920928955078125e-07,
+    "z_cosine_shift": 0.9998087882995605
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "adapter_mean",
+    "alpha": 0.005,
+    "renorm": true,
+    "image": "glasses_181_1/adapter_mean_a0.005.png",
+    "edit_rms": 0.45084047317504883,
+    "activation_rms": 18.977310180664062,
+    "z_norm_drift": 1.1920928955078125e-07,
+    "z_cosine_shift": 0.9999876022338867
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "adapter_mean",
+    "alpha": 0.01,
+    "renorm": true,
+    "image": "glasses_181_1/adapter_mean_a0.01.png",
+    "edit_rms": 0.8952078819274902,
+    "activation_rms": 19.480947494506836,
+    "z_norm_drift": 1.1920928955078125e-07,
+    "z_cosine_shift": 0.9999504685401917
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "adapter_mean",
+    "alpha": 0.02,
+    "renorm": true,
+    "image": "glasses_181_1/adapter_mean_a0.02.png",
+    "edit_rms": 1.750527262687683,
+    "activation_rms": 21.20833396911621,
+    "z_norm_drift": 1.1920928955078125e-07,
+    "z_cosine_shift": 0.9998021125793457
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "adapter_mean",
+    "alpha": 0.05,
+    "renorm": true,
+    "image": "glasses_181_1/adapter_mean_a0.05.png",
+    "edit_rms": 3.8384642601013184,
+    "activation_rms": 29.363285064697266,
+    "z_norm_drift": 5.960464477539063e-08,
+    "z_cosine_shift": 0.9987982511520386
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "image_pertoken",
+    "alpha": 0.005,
+    "renorm": true,
+    "image": "glasses_181_1/image_pertoken_a0.005.png",
+    "edit_rms": 0.0932900533080101,
+    "activation_rms": 18.829118728637695,
+    "norm_drift": 0.0001220703125
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "image_pertoken",
+    "alpha": 0.01,
+    "renorm": true,
+    "image": "glasses_181_1/image_pertoken_a0.01.png",
+    "edit_rms": 0.1875539869070053,
+    "activation_rms": 18.967350006103516,
+    "norm_drift": 0.0001220703125
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "image_pertoken",
+    "alpha": 0.02,
+    "renorm": true,
+    "image": "glasses_181_1/image_pertoken_a0.02.png",
+    "edit_rms": 0.37729597091674805,
+    "activation_rms": 19.195192337036133,
+    "norm_drift": 0.000244140625
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "image_pertoken",
+    "alpha": 0.05,
+    "renorm": true,
+    "image": "glasses_181_1/image_pertoken_a0.05.png",
+    "edit_rms": 0.9513910412788391,
+    "activation_rms": 19.956674575805664,
+    "norm_drift": 0.000244140625
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "image_mean",
+    "alpha": 0.005,
+    "renorm": true,
+    "image": "glasses_181_1/image_mean_a0.005.png",
+    "edit_rms": 0.09410671144723892,
+    "activation_rms": 18.86566162109375,
+    "norm_drift": 0.0001220703125
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "image_mean",
+    "alpha": 0.01,
+    "renorm": true,
+    "image": "glasses_181_1/image_mean_a0.01.png",
+    "edit_rms": 0.18972253799438477,
+    "activation_rms": 19.0582218170166,
+    "norm_drift": 0.0001220703125
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "image_mean",
+    "alpha": 0.02,
+    "renorm": true,
+    "image": "glasses_181_1/image_mean_a0.02.png",
+    "edit_rms": 0.38316911458969116,
+    "activation_rms": 19.370494842529297,
+    "norm_drift": 0.000244140625
+  },
+  {
+    "sample_id": "glasses_181_1",
+    "variant": "image_mean",
+    "alpha": 0.05,
+    "renorm": true,
+    "image": "glasses_181_1/image_mean_a0.05.png",
+    "edit_rms": 0.9728226661682129,
+    "activation_rms": 20.341726303100586,
+    "norm_drift": 0.000244140625
+  }
+]

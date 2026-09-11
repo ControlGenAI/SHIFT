@@ -1,0 +1,1795 @@
+{
+  "sample": {
+    "id": "glasses_180_1",
+    "pair_id": "glasses_180",
+    "label": 1,
+    "split": "test",
+    "seed": 500180,
+    "prompt": "A bright daylight front-facing centered head-and-shoulders portrait photograph of a young man with loose curly black hair, neutral expression, looking straight at the camera, plain grey background, wearing thin gold round eyeglasses",
+    "image": "glasses_180_1/image.png",
+    "blocks": {
+      "0": "glasses_180_1/block_0.pt",
+      "1": "glasses_180_1/block_1.pt",
+      "2": "glasses_180_1/block_2.pt",
+      "3": "glasses_180_1/block_3.pt",
+      "4": "glasses_180_1/block_4.pt",
+      "5": "glasses_180_1/block_5.pt",
+      "6": "glasses_180_1/block_6.pt",
+      "7": "glasses_180_1/block_7.pt",
+      "8": "glasses_180_1/block_8.pt",
+      "9": "glasses_180_1/block_9.pt",
+      "10": "glasses_180_1/block_10.pt",
+      "11": "glasses_180_1/block_11.pt",
+      "12": "glasses_180_1/block_12.pt",
+      "13": "glasses_180_1/block_13.pt",
+      "14": "glasses_180_1/block_14.pt",
+      "15": "glasses_180_1/block_15.pt",
+      "16": "glasses_180_1/block_16.pt",
+      "17": "glasses_180_1/block_17.pt",
+      "18": "glasses_180_1/block_18.pt"
+    },
+    "features": "glasses_180_1/features.pt"
+  },
+  "block": null,
+  "blocks": [],
+  "block_mode": "independent",
+  "alpha": 0.5,
+  "space": "velocity",
+  "logs": [
+    {
+      "step": 0,
+      "iteration": 0,
+      "semantic_loss": 0.026520032435655594,
+      "total_loss": 0.026520032435655594,
+      "preservation_loss": 0.0,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0
+      ],
+      "fp32_relative_rms": [
+        0.0
+      ],
+      "velocity_relative_rms": [
+        0.0
+      ],
+      "gradient_rms": 0.00017621969163883477,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 1,
+      "semantic_loss": 0.05646635591983795,
+      "total_loss": 0.05646635591983795,
+      "preservation_loss": 0.0001268870400963351,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.011264416389167309
+      ],
+      "fp32_relative_rms": [
+        0.009989759884774685
+      ],
+      "velocity_relative_rms": [
+        0.011264416389167309
+      ],
+      "gradient_rms": 0.001548128086142242,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 2,
+      "semantic_loss": 0.02677846886217594,
+      "total_loss": 0.02677846886217594,
+      "preservation_loss": 0.00018234597519040108,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.01350355427712202
+      ],
+      "fp32_relative_rms": [
+        0.013379176147282124
+      ],
+      "velocity_relative_rms": [
+        0.01350355427712202
+      ],
+      "gradient_rms": 0.0005553805967792869,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 3,
+      "semantic_loss": 0.01800980046391487,
+      "total_loss": 0.01800980046391487,
+      "preservation_loss": 0.00029034377075731754,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.017039477825164795
+      ],
+      "fp32_relative_rms": [
+        0.016965650022029877
+      ],
+      "velocity_relative_rms": [
+        0.017039477825164795
+      ],
+      "gradient_rms": 0.00013412488624453545,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 4,
+      "semantic_loss": 0.015705620869994164,
+      "total_loss": 0.015705620869994164,
+      "preservation_loss": 0.0004231543862260878,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.02057071588933468
+      ],
+      "fp32_relative_rms": [
+        0.02049652859568596
+      ],
+      "velocity_relative_rms": [
+        0.02057071588933468
+      ],
+      "gradient_rms": 0.0001060099239111878,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 5,
+      "semantic_loss": 0.013256840407848358,
+      "total_loss": 0.013256840407848358,
+      "preservation_loss": 0.0005674832500517368,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.023821907117962837
+      ],
+      "fp32_relative_rms": [
+        0.02376745641231537
+      ],
+      "velocity_relative_rms": [
+        0.023821907117962837
+      ],
+      "gradient_rms": 5.8043158787768334e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 6,
+      "semantic_loss": 0.011991241946816444,
+      "total_loss": 0.011991241946816444,
+      "preservation_loss": 0.0007196550723165274,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.026826387271285057
+      ],
+      "fp32_relative_rms": [
+        0.026783445850014687
+      ],
+      "velocity_relative_rms": [
+        0.026826387271285057
+      ],
+      "gradient_rms": 4.199873001198284e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 7,
+      "semantic_loss": 0.011315789073705673,
+      "total_loss": 0.011315789073705673,
+      "preservation_loss": 0.0008743504295125604,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.029569417238235474
+      ],
+      "fp32_relative_rms": [
+        0.029523300006985664
+      ],
+      "velocity_relative_rms": [
+        0.029569417238235474
+      ],
+      "gradient_rms": 3.849833592539653e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 8,
+      "semantic_loss": 0.010627616196870804,
+      "total_loss": 0.010627616196870804,
+      "preservation_loss": 0.0010265938472002745,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03204050287604332
+      ],
+      "fp32_relative_rms": [
+        0.03199591487646103
+      ],
+      "velocity_relative_rms": [
+        0.03204050287604332
+      ],
+      "gradient_rms": 4.14155401813332e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 9,
+      "semantic_loss": 0.009923849254846573,
+      "total_loss": 0.009923849254846573,
+      "preservation_loss": 0.0011759253684431314,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.034291770309209824
+      ],
+      "fp32_relative_rms": [
+        0.03424747288227081
+      ],
+      "velocity_relative_rms": [
+        0.034291770309209824
+      ],
+      "gradient_rms": 3.838676639134064e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 10,
+      "semantic_loss": 0.009228503331542015,
+      "total_loss": 0.009228503331542015,
+      "preservation_loss": 0.001321030082181096,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03634597733616829
+      ],
+      "fp32_relative_rms": [
+        0.03631163015961647
+      ],
+      "velocity_relative_rms": [
+        0.03634597733616829
+      ],
+      "gradient_rms": 2.8168746212031692e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 11,
+      "semantic_loss": 0.00857305247336626,
+      "total_loss": 0.00857305247336626,
+      "preservation_loss": 0.001463949796743691,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03826159983873367
+      ],
+      "fp32_relative_rms": [
+        0.03821588307619095
+      ],
+      "velocity_relative_rms": [
+        0.03826159983873367
+      ],
+      "gradient_rms": 1.704200440144632e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 12,
+      "semantic_loss": 0.008151423186063766,
+      "total_loss": 0.008151423186063766,
+      "preservation_loss": 0.0016015550354495645,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.040019433945417404
+      ],
+      "fp32_relative_rms": [
+        0.039979685097932816
+      ],
+      "velocity_relative_rms": [
+        0.040019433945417404
+      ],
+      "gradient_rms": 1.639775109651964e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 13,
+      "semantic_loss": 0.007775855250656605,
+      "total_loss": 0.007775855250656605,
+      "preservation_loss": 0.0017344343941658735,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04164654389023781
+      ],
+      "fp32_relative_rms": [
+        0.04160991311073303
+      ],
+      "velocity_relative_rms": [
+        0.04164654389023781
+      ],
+      "gradient_rms": 1.6544012396479957e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 14,
+      "semantic_loss": 0.007449938915669918,
+      "total_loss": 0.007449938915669918,
+      "preservation_loss": 0.001862846314907074,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.043160706758499146
+      ],
+      "fp32_relative_rms": [
+        0.04311591014266014
+      ],
+      "velocity_relative_rms": [
+        0.043160706758499146
+      ],
+      "gradient_rms": 1.599711504240986e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 15,
+      "semantic_loss": 0.0071556540206074715,
+      "total_loss": 0.0071556540206074715,
+      "preservation_loss": 0.001983519410714507,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04453671723604202
+      ],
+      "fp32_relative_rms": [
+        0.044507160782814026
+      ],
+      "velocity_relative_rms": [
+        0.04453671723604202
+      ],
+      "gradient_rms": 1.4631728845415637e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 16,
+      "semantic_loss": 0.006918557919561863,
+      "total_loss": 0.006918557919561863,
+      "preservation_loss": 0.002099464414641261,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04581991210579872
+      ],
+      "fp32_relative_rms": [
+        0.04579481482505798
+      ],
+      "velocity_relative_rms": [
+        0.04581991210579872
+      ],
+      "gradient_rms": 1.3887964087189175e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 17,
+      "semantic_loss": 0.006665387190878391,
+      "total_loss": 0.006665387190878391,
+      "preservation_loss": 0.0022107884287834167,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.047019023448228836
+      ],
+      "fp32_relative_rms": [
+        0.04698609560728073
+      ],
+      "velocity_relative_rms": [
+        0.047019023448228836
+      ],
+      "gradient_rms": 1.1955479749303777e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 18,
+      "semantic_loss": 0.006402420811355114,
+      "total_loss": 0.006402420811355114,
+      "preservation_loss": 0.002315272344276309,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04811728000640869
+      ],
+      "fp32_relative_rms": [
+        0.04808788374066353
+      ],
+      "velocity_relative_rms": [
+        0.04811728000640869
+      ],
+      "gradient_rms": 1.008305207506055e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 19,
+      "semantic_loss": 0.006195676513016224,
+      "total_loss": 0.006195676513016224,
+      "preservation_loss": 0.0024147992953658104,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.049140606075525284
+      ],
+      "fp32_relative_rms": [
+        0.049105387181043625
+      ],
+      "velocity_relative_rms": [
+        0.049140606075525284
+      ],
+      "gradient_rms": 1.1087236089224461e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "iteration": 20,
+      "semantic_loss": 0.005968870595097542,
+      "total_loss": 0.005968870595097542,
+      "preservation_loss": 0.0025083618238568306,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.050083551555871964
+      ],
+      "fp32_relative_rms": [
+        0.05004492029547691
+      ],
+      "velocity_relative_rms": [
+        0.050083551555871964
+      ]
+    },
+    {
+      "step": 0,
+      "selected_iteration": 20,
+      "baseline_semantic_loss": 0.026520032435655594,
+      "selected_total_loss": 0.005968870595097542,
+      "selection": "last",
+      "max_relative_rms": null,
+      "preservation_weight": 0.0,
+      "learning_rate": 0.01,
+      "iterations": 20,
+      "sigma": 1.0,
+      "model_tensor_dtype": "torch.bfloat16",
+      "correction_dtype": "torch.float32",
+      "selected_relative_rms": [
+        0.050083551555871964
+      ],
+      "final_semantic_loss": 0.005968870595097542,
+      "velocity_relative_rms": [
+        0.050083551555871964
+      ]
+    },
+    {
+      "step": 1,
+      "iteration": 0,
+      "semantic_loss": 0.026559393852949142,
+      "total_loss": 0.026559393852949142,
+      "preservation_loss": 0.0,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0
+      ],
+      "fp32_relative_rms": [
+        0.0
+      ],
+      "velocity_relative_rms": [
+        0.0
+      ],
+      "gradient_rms": 0.00015017770056147128,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 1,
+      "semantic_loss": 0.030921977013349533,
+      "total_loss": 0.030921977013349533,
+      "preservation_loss": 0.0001269992208108306,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.011269393377006054
+      ],
+      "fp32_relative_rms": [
+        0.009986148215830326
+      ],
+      "velocity_relative_rms": [
+        0.011269393377006054
+      ],
+      "gradient_rms": 0.0003435705730225891,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 2,
+      "semantic_loss": 0.01893872208893299,
+      "total_loss": 0.01893872208893299,
+      "preservation_loss": 0.00019418445299379528,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.013935009017586708
+      ],
+      "fp32_relative_rms": [
+        0.013807695358991623
+      ],
+      "velocity_relative_rms": [
+        0.013935009017586708
+      ],
+      "gradient_rms": 0.0002104539453284815,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 3,
+      "semantic_loss": 0.014947477728128433,
+      "total_loss": 0.014947477728128433,
+      "preservation_loss": 0.0002981597790494561,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.01726730540394783
+      ],
+      "fp32_relative_rms": [
+        0.017217425629496574
+      ],
+      "velocity_relative_rms": [
+        0.01726730540394783
+      ],
+      "gradient_rms": 3.979719986091368e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 4,
+      "semantic_loss": 0.014069990254938602,
+      "total_loss": 0.014069990254938602,
+      "preservation_loss": 0.0004303717869333923,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.020745404064655304
+      ],
+      "fp32_relative_rms": [
+        0.02064213901758194
+      ],
+      "velocity_relative_rms": [
+        0.020745404064655304
+      ],
+      "gradient_rms": 3.377259781700559e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 5,
+      "semantic_loss": 0.012887774035334587,
+      "total_loss": 0.012887774035334587,
+      "preservation_loss": 0.0005704807117581367,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.023884737864136696
+      ],
+      "fp32_relative_rms": [
+        0.023834148421883583
+      ],
+      "velocity_relative_rms": [
+        0.023884737864136696
+      ],
+      "gradient_rms": 3.0103930839686655e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 6,
+      "semantic_loss": 0.011498384177684784,
+      "total_loss": 0.011498384177684784,
+      "preservation_loss": 0.0007187800947576761,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.026810074225068092
+      ],
+      "fp32_relative_rms": [
+        0.026760727167129517
+      ],
+      "velocity_relative_rms": [
+        0.026810074225068092
+      ],
+      "gradient_rms": 2.2847645595902577e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 7,
+      "semantic_loss": 0.010625401511788368,
+      "total_loss": 0.010625401511788368,
+      "preservation_loss": 0.0008710339316166937,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.02951328456401825
+      ],
+      "fp32_relative_rms": [
+        0.029456626623868942
+      ],
+      "velocity_relative_rms": [
+        0.02951328456401825
+      ],
+      "gradient_rms": 1.9251383491791785e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 8,
+      "semantic_loss": 0.010011565871536732,
+      "total_loss": 0.010011565871536732,
+      "preservation_loss": 0.0010199523530900478,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03193669021129608
+      ],
+      "fp32_relative_rms": [
+        0.03189999982714653
+      ],
+      "velocity_relative_rms": [
+        0.03193669021129608
+      ],
+      "gradient_rms": 1.5773453924339265e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 9,
+      "semantic_loss": 0.009549027308821678,
+      "total_loss": 0.009549027308821678,
+      "preservation_loss": 0.0011661368189379573,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.034148745238780975
+      ],
+      "fp32_relative_rms": [
+        0.03411659225821495
+      ],
+      "velocity_relative_rms": [
+        0.034148745238780975
+      ],
+      "gradient_rms": 1.42705139296595e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 10,
+      "semantic_loss": 0.009186899289488792,
+      "total_loss": 0.009186899289488792,
+      "preservation_loss": 0.0013091492000967264,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03618216887116432
+      ],
+      "fp32_relative_rms": [
+        0.036144036799669266
+      ],
+      "velocity_relative_rms": [
+        0.03618216887116432
+      ],
+      "gradient_rms": 1.5965455531841144e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 11,
+      "semantic_loss": 0.00874057412147522,
+      "total_loss": 0.00874057412147522,
+      "preservation_loss": 0.0014473374467343092,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03804389014840126
+      ],
+      "fp32_relative_rms": [
+        0.03800932317972183
+      ],
+      "velocity_relative_rms": [
+        0.03804389014840126
+      ],
+      "gradient_rms": 1.3831016076437663e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 12,
+      "semantic_loss": 0.008315294981002808,
+      "total_loss": 0.008315294981002808,
+      "preservation_loss": 0.0015818520914763212,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.039772503077983856
+      ],
+      "fp32_relative_rms": [
+        0.039734967052936554
+      ],
+      "velocity_relative_rms": [
+        0.039772503077983856
+      ],
+      "gradient_rms": 1.132175384555012e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 13,
+      "semantic_loss": 0.007915494032204151,
+      "total_loss": 0.007915494032204151,
+      "preservation_loss": 0.0017113450448960066,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.041368406265974045
+      ],
+      "fp32_relative_rms": [
+        0.041334573179483414
+      ],
+      "velocity_relative_rms": [
+        0.041368406265974045
+      ],
+      "gradient_rms": 9.813503311306704e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 14,
+      "semantic_loss": 0.007586805149912834,
+      "total_loss": 0.007586805149912834,
+      "preservation_loss": 0.001835465431213379,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.042842332273721695
+      ],
+      "fp32_relative_rms": [
+        0.04281993210315704
+      ],
+      "velocity_relative_rms": [
+        0.042842332273721695
+      ],
+      "gradient_rms": 9.395187589689158e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 15,
+      "semantic_loss": 0.007269350811839104,
+      "total_loss": 0.007269350811839104,
+      "preservation_loss": 0.001956639811396599,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04423392191529274
+      ],
+      "fp32_relative_rms": [
+        0.044205810874700546
+      ],
+      "velocity_relative_rms": [
+        0.04423392191529274
+      ],
+      "gradient_rms": 8.90369756234577e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 16,
+      "semantic_loss": 0.00700735067948699,
+      "total_loss": 0.00700735067948699,
+      "preservation_loss": 0.0020738071762025356,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04553907364606857
+      ],
+      "fp32_relative_rms": [
+        0.04551013559103012
+      ],
+      "velocity_relative_rms": [
+        0.04553907364606857
+      ],
+      "gradient_rms": 8.461235665890854e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 17,
+      "semantic_loss": 0.006780996453016996,
+      "total_loss": 0.006780996453016996,
+      "preservation_loss": 0.00218749325722456,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.046770643442869186
+      ],
+      "fp32_relative_rms": [
+        0.04674360528588295
+      ],
+      "velocity_relative_rms": [
+        0.046770643442869186
+      ],
+      "gradient_rms": 7.831476068531629e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 18,
+      "semantic_loss": 0.006580985151231289,
+      "total_loss": 0.006580985151231289,
+      "preservation_loss": 0.002297378145158291,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.047930970788002014
+      ],
+      "fp32_relative_rms": [
+        0.04790623486042023
+      ],
+      "velocity_relative_rms": [
+        0.047930970788002014
+      ],
+      "gradient_rms": 8.66380287334323e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 19,
+      "semantic_loss": 0.006337705068290234,
+      "total_loss": 0.006337705068290234,
+      "preservation_loss": 0.002402145881205797,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04901169240474701
+      ],
+      "fp32_relative_rms": [
+        0.0489937961101532
+      ],
+      "velocity_relative_rms": [
+        0.04901169240474701
+      ],
+      "gradient_rms": 6.836794455011841e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 1,
+      "iteration": 20,
+      "semantic_loss": 0.006120234727859497,
+      "total_loss": 0.006120234727859497,
+      "preservation_loss": 0.002504489617422223,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.05004487559199333
+      ],
+      "fp32_relative_rms": [
+        0.050017766654491425
+      ],
+      "velocity_relative_rms": [
+        0.05004487559199333
+      ]
+    },
+    {
+      "step": 1,
+      "selected_iteration": 20,
+      "baseline_semantic_loss": 0.026559393852949142,
+      "selected_total_loss": 0.006120234727859497,
+      "selection": "last",
+      "max_relative_rms": null,
+      "preservation_weight": 0.0,
+      "learning_rate": 0.01,
+      "iterations": 20,
+      "sigma": 0.75,
+      "model_tensor_dtype": "torch.bfloat16",
+      "correction_dtype": "torch.float32",
+      "selected_relative_rms": [
+        0.05004487559199333
+      ],
+      "final_semantic_loss": 0.006120234727859497,
+      "velocity_relative_rms": [
+        0.05004487559199333
+      ]
+    },
+    {
+      "step": 2,
+      "iteration": 0,
+      "semantic_loss": 0.026557501405477524,
+      "total_loss": 0.026557501405477524,
+      "preservation_loss": 0.0,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0
+      ],
+      "fp32_relative_rms": [
+        0.0
+      ],
+      "velocity_relative_rms": [
+        0.0
+      ],
+      "gradient_rms": 0.00010600994573906064,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 1,
+      "semantic_loss": 0.02930518053472042,
+      "total_loss": 0.02930518053472042,
+      "preservation_loss": 0.00012214429443702102,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.01105189137160778
+      ],
+      "fp32_relative_rms": [
+        0.009980733506381512
+      ],
+      "velocity_relative_rms": [
+        0.01105189137160778
+      ],
+      "gradient_rms": 0.0007554667536169291,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 2,
+      "semantic_loss": 0.021093707531690598,
+      "total_loss": 0.021093707531690598,
+      "preservation_loss": 0.00020279374439269304,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.014240564778447151
+      ],
+      "fp32_relative_rms": [
+        0.01410564687103033
+      ],
+      "velocity_relative_rms": [
+        0.014240564778447151
+      ],
+      "gradient_rms": 0.00017938796372618526,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 3,
+      "semantic_loss": 0.01722012832760811,
+      "total_loss": 0.01722012832760811,
+      "preservation_loss": 0.00032316421857103705,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.01797677017748356
+      ],
+      "fp32_relative_rms": [
+        0.017927788197994232
+      ],
+      "velocity_relative_rms": [
+        0.01797677017748356
+      ],
+      "gradient_rms": 4.388490197015926e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 4,
+      "semantic_loss": 0.015469028614461422,
+      "total_loss": 0.015469028614461422,
+      "preservation_loss": 0.0004696889955084771,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.021672308444976807
+      ],
+      "fp32_relative_rms": [
+        0.0215810164809227
+      ],
+      "velocity_relative_rms": [
+        0.021672308444976807
+      ],
+      "gradient_rms": 3.185546302120201e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 5,
+      "semantic_loss": 0.014578962698578835,
+      "total_loss": 0.014578962698578835,
+      "preservation_loss": 0.0006278250366449356,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.02505643665790558
+      ],
+      "fp32_relative_rms": [
+        0.02500210888683796
+      ],
+      "velocity_relative_rms": [
+        0.02505643665790558
+      ],
+      "gradient_rms": 2.79974628938362e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 6,
+      "semantic_loss": 0.013428185135126114,
+      "total_loss": 0.013428185135126114,
+      "preservation_loss": 0.0007948335842229426,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0281927902251482
+      ],
+      "fp32_relative_rms": [
+        0.02814185433089733
+      ],
+      "velocity_relative_rms": [
+        0.0281927902251482
+      ],
+      "gradient_rms": 2.3030319425743073e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 7,
+      "semantic_loss": 0.012310393154621124,
+      "total_loss": 0.012310393154621124,
+      "preservation_loss": 0.000967005267739296,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03109670616686344
+      ],
+      "fp32_relative_rms": [
+        0.031053349375724792
+      ],
+      "velocity_relative_rms": [
+        0.03109670616686344
+      ],
+      "gradient_rms": 1.6532412701053545e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 8,
+      "semantic_loss": 0.011619903147220612,
+      "total_loss": 0.011619903147220612,
+      "preservation_loss": 0.0011421394301578403,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0337955541908741
+      ],
+      "fp32_relative_rms": [
+        0.033755380660295486
+      ],
+      "velocity_relative_rms": [
+        0.0337955541908741
+      ],
+      "gradient_rms": 1.6663292626617476e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 9,
+      "semantic_loss": 0.011073064059019089,
+      "total_loss": 0.011073064059019089,
+      "preservation_loss": 0.00131578603759408,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0362737663090229
+      ],
+      "fp32_relative_rms": [
+        0.03622914105653763
+      ],
+      "velocity_relative_rms": [
+        0.0362737663090229
+      ],
+      "gradient_rms": 1.6220750694628805e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 10,
+      "semantic_loss": 0.010450371541082859,
+      "total_loss": 0.010450371541082859,
+      "preservation_loss": 0.0014843135140836239,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03852678835391998
+      ],
+      "fp32_relative_rms": [
+        0.038478028029203415
+      ],
+      "velocity_relative_rms": [
+        0.03852678835391998
+      ],
+      "gradient_rms": 1.331879866484087e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 11,
+      "semantic_loss": 0.00989230815321207,
+      "total_loss": 0.00989230815321207,
+      "preservation_loss": 0.001646178076043725,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0405731201171875
+      ],
+      "fp32_relative_rms": [
+        0.04054323211312294
+      ],
+      "velocity_relative_rms": [
+        0.0405731201171875
+      ],
+      "gradient_rms": 9.677492926130071e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 12,
+      "semantic_loss": 0.009513700380921364,
+      "total_loss": 0.009513700380921364,
+      "preservation_loss": 0.001805806765332818,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04249478131532669
+      ],
+      "fp32_relative_rms": [
+        0.04246565327048302
+      ],
+      "velocity_relative_rms": [
+        0.04249478131532669
+      ],
+      "gradient_rms": 9.4245524451253e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 13,
+      "semantic_loss": 0.00925917737185955,
+      "total_loss": 0.00925917737185955,
+      "preservation_loss": 0.0019618149381130934,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.044292379170656204
+      ],
+      "fp32_relative_rms": [
+        0.04426337778568268
+      ],
+      "velocity_relative_rms": [
+        0.044292379170656204
+      ],
+      "gradient_rms": 1.0764355465653352e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 14,
+      "semantic_loss": 0.008927538990974426,
+      "total_loss": 0.008927538990974426,
+      "preservation_loss": 0.002113563474267721,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.045973505824804306
+      ],
+      "fp32_relative_rms": [
+        0.045943837612867355
+      ],
+      "velocity_relative_rms": [
+        0.045973505824804306
+      ],
+      "gradient_rms": 1.0292797014699318e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 15,
+      "semantic_loss": 0.008500812575221062,
+      "total_loss": 0.008500812575221062,
+      "preservation_loss": 0.002261248417198658,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04755258560180664
+      ],
+      "fp32_relative_rms": [
+        0.047519102692604065
+      ],
+      "velocity_relative_rms": [
+        0.04755258560180664
+      ],
+      "gradient_rms": 8.558427907701116e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 16,
+      "semantic_loss": 0.008185124956071377,
+      "total_loss": 0.008185124956071377,
+      "preservation_loss": 0.002404786879196763,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04903862625360489
+      ],
+      "fp32_relative_rms": [
+        0.04900218918919563
+      ],
+      "velocity_relative_rms": [
+        0.04903862625360489
+      ],
+      "gradient_rms": 8.108092515612952e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 17,
+      "semantic_loss": 0.007912134751677513,
+      "total_loss": 0.007912134751677513,
+      "preservation_loss": 0.0025421390309929848,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.050419628620147705
+      ],
+      "fp32_relative_rms": [
+        0.0503963902592659
+      ],
+      "velocity_relative_rms": [
+        0.050419628620147705
+      ],
+      "gradient_rms": 8.09939137980109e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 18,
+      "semantic_loss": 0.007661627605557442,
+      "total_loss": 0.007661627605557442,
+      "preservation_loss": 0.002675737952813506,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0517275333404541
+      ],
+      "fp32_relative_rms": [
+        0.05170249566435814
+      ],
+      "velocity_relative_rms": [
+        0.0517275333404541
+      ],
+      "gradient_rms": 8.128562512865756e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 19,
+      "semantic_loss": 0.0073891254141926765,
+      "total_loss": 0.0073891254141926765,
+      "preservation_loss": 0.002802973845973611,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.052943117916584015
+      ],
+      "fp32_relative_rms": [
+        0.0529266782104969
+      ],
+      "velocity_relative_rms": [
+        0.052943117916584015
+      ],
+      "gradient_rms": 7.318448751902906e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 2,
+      "iteration": 20,
+      "semantic_loss": 0.007155686151236296,
+      "total_loss": 0.007155686151236296,
+      "preservation_loss": 0.002927006222307682,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.054101813584566116
+      ],
+      "fp32_relative_rms": [
+        0.05408396199345589
+      ],
+      "velocity_relative_rms": [
+        0.054101813584566116
+      ]
+    },
+    {
+      "step": 2,
+      "selected_iteration": 20,
+      "baseline_semantic_loss": 0.026557501405477524,
+      "selected_total_loss": 0.007155686151236296,
+      "selection": "last",
+      "max_relative_rms": null,
+      "preservation_weight": 0.0,
+      "learning_rate": 0.01,
+      "iterations": 20,
+      "sigma": 0.5,
+      "model_tensor_dtype": "torch.bfloat16",
+      "correction_dtype": "torch.float32",
+      "selected_relative_rms": [
+        0.054101813584566116
+      ],
+      "final_semantic_loss": 0.007155686151236296,
+      "velocity_relative_rms": [
+        0.054101813584566116
+      ]
+    },
+    {
+      "step": 3,
+      "iteration": 0,
+      "semantic_loss": 0.026505596935749054,
+      "total_loss": 0.026505596935749054,
+      "preservation_loss": 0.0,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0
+      ],
+      "fp32_relative_rms": [
+        0.0
+      ],
+      "velocity_relative_rms": [
+        0.0
+      ],
+      "gradient_rms": 4.7233272198354825e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 1,
+      "semantic_loss": 0.023602671921253204,
+      "total_loss": 0.023602671921253204,
+      "preservation_loss": 0.0001155870922957547,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.010751143097877502
+      ],
+      "fp32_relative_rms": [
+        0.009960602968931198
+      ],
+      "velocity_relative_rms": [
+        0.010751143097877502
+      ],
+      "gradient_rms": 0.00019105714454781264,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 2,
+      "semantic_loss": 0.019033489748835564,
+      "total_loss": 0.019033489748835564,
+      "preservation_loss": 0.00022963061928749084,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.015153566375374794
+      ],
+      "fp32_relative_rms": [
+        0.014981231652200222
+      ],
+      "velocity_relative_rms": [
+        0.015153566375374794
+      ],
+      "gradient_rms": 2.3427399355568923e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 3,
+      "semantic_loss": 0.01800813153386116,
+      "total_loss": 0.01800813153386116,
+      "preservation_loss": 0.00038669697823934257,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.01966460980474949
+      ],
+      "fp32_relative_rms": [
+        0.01972063258290291
+      ],
+      "velocity_relative_rms": [
+        0.01966460980474949
+      ],
+      "gradient_rms": 1.9506413082126528e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 4,
+      "semantic_loss": 0.016614103689789772,
+      "total_loss": 0.016614103689789772,
+      "preservation_loss": 0.0005765490932390094,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.024011434987187386
+      ],
+      "fp32_relative_rms": [
+        0.023967016488313675
+      ],
+      "velocity_relative_rms": [
+        0.024011434987187386
+      ],
+      "gradient_rms": 1.3911558198742568e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 5,
+      "semantic_loss": 0.015385515987873077,
+      "total_loss": 0.015385515987873077,
+      "preservation_loss": 0.0007798662409186363,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.027926083654165268
+      ],
+      "fp32_relative_rms": [
+        0.027855372056365013
+      ],
+      "velocity_relative_rms": [
+        0.027926083654165268
+      ],
+      "gradient_rms": 1.1233290024392772e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 6,
+      "semantic_loss": 0.01439453475177288,
+      "total_loss": 0.01439453475177288,
+      "preservation_loss": 0.0009948534425348043,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03154129907488823
+      ],
+      "fp32_relative_rms": [
+        0.031495194882154465
+      ],
+      "velocity_relative_rms": [
+        0.03154129907488823
+      ],
+      "gradient_rms": 1.0276209650328383e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 7,
+      "semantic_loss": 0.013510547578334808,
+      "total_loss": 0.013510547578334808,
+      "preservation_loss": 0.0012230288702994585,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03497182950377464
+      ],
+      "fp32_relative_rms": [
+        0.03495268523693085
+      ],
+      "velocity_relative_rms": [
+        0.03497182950377464
+      ],
+      "gradient_rms": 1.0115507393493317e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 8,
+      "semantic_loss": 0.01273372583091259,
+      "total_loss": 0.01273372583091259,
+      "preservation_loss": 0.0014653337420895696,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03827967494726181
+      ],
+      "fp32_relative_rms": [
+        0.03824831545352936
+      ],
+      "velocity_relative_rms": [
+        0.03827967494726181
+      ],
+      "gradient_rms": 1.733923636493273e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 9,
+      "semantic_loss": 0.012075071223080158,
+      "total_loss": 0.012075071223080158,
+      "preservation_loss": 0.001713828882202506,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04139840975403786
+      ],
+      "fp32_relative_rms": [
+        0.04136663302779198
+      ],
+      "velocity_relative_rms": [
+        0.04139840975403786
+      ],
+      "gradient_rms": 7.872546120779589e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 10,
+      "semantic_loss": 0.011450935155153275,
+      "total_loss": 0.011450935155153275,
+      "preservation_loss": 0.0019655704963952303,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04433475434780121
+      ],
+      "fp32_relative_rms": [
+        0.04431150108575821
+      ],
+      "velocity_relative_rms": [
+        0.04433475434780121
+      ],
+      "gradient_rms": 6.555997060786467e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 11,
+      "semantic_loss": 0.010903313755989075,
+      "total_loss": 0.010903313755989075,
+      "preservation_loss": 0.0022204630076885223,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04712178558111191
+      ],
+      "fp32_relative_rms": [
+        0.047096893191337585
+      ],
+      "velocity_relative_rms": [
+        0.04712178558111191
+      ],
+      "gradient_rms": 5.694755145668751e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 12,
+      "semantic_loss": 0.01043124683201313,
+      "total_loss": 0.01043124683201313,
+      "preservation_loss": 0.0024772416800260544,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04977189376950264
+      ],
+      "fp32_relative_rms": [
+        0.04974585771560669
+      ],
+      "velocity_relative_rms": [
+        0.04977189376950264
+      ],
+      "gradient_rms": 5.36835477760178e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 13,
+      "semantic_loss": 0.009999893605709076,
+      "total_loss": 0.009999893605709076,
+      "preservation_loss": 0.0027361204847693443,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.052307937294244766
+      ],
+      "fp32_relative_rms": [
+        0.05227275937795639
+      ],
+      "velocity_relative_rms": [
+        0.052307937294244766
+      ],
+      "gradient_rms": 5.3057874538353644e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 14,
+      "semantic_loss": 0.009656229987740517,
+      "total_loss": 0.009656229987740517,
+      "preservation_loss": 0.0029952549375593662,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0547289215028286
+      ],
+      "fp32_relative_rms": [
+        0.05468962714076042
+      ],
+      "velocity_relative_rms": [
+        0.0547289215028286
+      ],
+      "gradient_rms": 6.235987711988855e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 15,
+      "semantic_loss": 0.009314981289207935,
+      "total_loss": 0.009314981289207935,
+      "preservation_loss": 0.00325308321043849,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.05703580752015114
+      ],
+      "fp32_relative_rms": [
+        0.057005904614925385
+      ],
+      "velocity_relative_rms": [
+        0.05703580752015114
+      ],
+      "gradient_rms": 5.863962996954797e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 16,
+      "semantic_loss": 0.008995531126856804,
+      "total_loss": 0.008995531126856804,
+      "preservation_loss": 0.003510716138407588,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.059251293540000916
+      ],
+      "fp32_relative_rms": [
+        0.059228476136922836
+      ],
+      "velocity_relative_rms": [
+        0.059251293540000916
+      ],
+      "gradient_rms": 5.502134172274964e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 17,
+      "semantic_loss": 0.008672451600432396,
+      "total_loss": 0.008672451600432396,
+      "preservation_loss": 0.0037686191499233246,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.061389077454805374
+      ],
+      "fp32_relative_rms": [
+        0.06136546656489372
+      ],
+      "velocity_relative_rms": [
+        0.061389077454805374
+      ],
+      "gradient_rms": 3.962076789321145e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 18,
+      "semantic_loss": 0.008406804874539375,
+      "total_loss": 0.008406804874539375,
+      "preservation_loss": 0.004025293979793787,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.06344520300626755
+      ],
+      "fp32_relative_rms": [
+        0.06341727077960968
+      ],
+      "velocity_relative_rms": [
+        0.06344520300626755
+      ],
+      "gradient_rms": 3.734692882062518e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 19,
+      "semantic_loss": 0.008159639313817024,
+      "total_loss": 0.008159639313817024,
+      "preservation_loss": 0.0042780013754963875,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.065406434237957
+      ],
+      "fp32_relative_rms": [
+        0.06538780778646469
+      ],
+      "velocity_relative_rms": [
+        0.065406434237957
+      ],
+      "gradient_rms": 3.862709036184242e-06,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 3,
+      "iteration": 20,
+      "semantic_loss": 0.00790462363511324,
+      "total_loss": 0.00790462363511324,
+      "preservation_loss": 0.004529647529125214,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0673026517033577
+      ],
+      "fp32_relative_rms": [
+        0.0672796294093132
+      ],
+      "velocity_relative_rms": [
+        0.0673026517033577
+      ]
+    },
+    {
+      "step": 3,
+      "selected_iteration": 20,
+      "baseline_semantic_loss": 0.026505596935749054,
+      "selected_total_loss": 0.00790462363511324,
+      "selection": "last",
+      "max_relative_rms": null,
+      "preservation_weight": 0.0,
+      "learning_rate": 0.01,
+      "iterations": 20,
+      "sigma": 0.25,
+      "model_tensor_dtype": "torch.bfloat16",
+      "correction_dtype": "torch.float32",
+      "selected_relative_rms": [
+        0.0673026517033577
+      ],
+      "final_semantic_loss": 0.00790462363511324,
+      "velocity_relative_rms": [
+        0.0673026517033577
+      ]
+    }
+  ],
+  "final_cls_removal_proxy": 0.34186628460884094,
+  "baseline_pixel_mae": 2.257657289505005,
+  "baseline_pixel_max_abs": 111.0
+}

@@ -1,0 +1,12 @@
+{
+  "direction_sha256": "b6205766f87e8eed23d6ae042aa5c3899ba558557a984dd91e86d7d7f0e40cc1",
+  "cls_signature": {
+    "model": "facebook/dinov2-large",
+    "revision": "47b73eefe95e8d44ec3623f8890bd894b6ea2d6c",
+    "size": 448,
+    "preprocessing": "full_frame_bicubic_square_imagenet"
+  },
+  "torch_version": "2.6.0+cu118",
+  "diffusers_version": "0.38.0",
+  "transformers_version": "4.49.0"
+}

@@ -1,0 +1,63 @@
+{
+  "sample": {
+    "id": "glasses_180_1",
+    "pair_id": "glasses_180",
+    "label": 1,
+    "split": "test",
+    "seed": 500180,
+    "prompt": "A bright daylight front-facing centered head-and-shoulders portrait photograph of a young man with loose curly black hair, neutral expression, looking straight at the camera, plain grey background, wearing thin gold round eyeglasses",
+    "image": "glasses_180_1/image.png",
+    "blocks": {
+      "0": "glasses_180_1/block_0.pt",
+      "1": "glasses_180_1/block_1.pt",
+      "2": "glasses_180_1/block_2.pt",
+      "3": "glasses_180_1/block_3.pt",
+      "4": "glasses_180_1/block_4.pt",
+      "5": "glasses_180_1/block_5.pt",
+      "6": "glasses_180_1/block_6.pt",
+      "7": "glasses_180_1/block_7.pt",
+      "8": "glasses_180_1/block_8.pt",
+      "9": "glasses_180_1/block_9.pt",
+      "10": "glasses_180_1/block_10.pt",
+      "11": "glasses_180_1/block_11.pt",
+      "12": "glasses_180_1/block_12.pt",
+      "13": "glasses_180_1/block_13.pt",
+      "14": "glasses_180_1/block_14.pt",
+      "15": "glasses_180_1/block_15.pt",
+      "16": "glasses_180_1/block_16.pt",
+      "17": "glasses_180_1/block_17.pt",
+      "18": "glasses_180_1/block_18.pt"
+    },
+    "features": "glasses_180_1/features.pt"
+  },
+  "block": null,
+  "blocks": [],
+  "block_mode": "independent",
+  "alpha": 0.0,
+  "space": "velocity",
+  "logs": [
+    {
+      "step": 0,
+      "alpha": 0.0,
+      "bypass": true
+    },
+    {
+      "step": 1,
+      "alpha": 0.0,
+      "bypass": true
+    },
+    {
+      "step": 2,
+      "alpha": 0.0,
+      "bypass": true
+    },
+    {
+      "step": 3,
+      "alpha": 0.0,
+      "bypass": true
+    }
+  ],
+  "final_cls_removal_proxy": 0.0,
+  "baseline_pixel_mae": 0.0,
+  "baseline_pixel_max_abs": 0.0
+}

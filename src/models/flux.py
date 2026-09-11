@@ -703,6 +703,7 @@ class FluxPipeline(
         max_sequence_length: int = 512,
         txt_steering={'vector': None},
         num=None,
+        activation_guidance=None,
         **args,
     ):
         r"""
@@ -1079,18 +1080,19 @@ class FluxPipeline(
                     )
                 register_attr(self, t=t.item(), a=args['structure_strength'], scale=scale)
                 
+                transformer_kwargs = dict(
+                    hidden_states=latents, timestep=timestep / 1000, guidance=guidance,
+                    pooled_projections=new_pooled_embeds, encoder_hidden_states=new_prompt_embeds,
+                    txt_ids=text_ids, img_ids=latent_image_ids,
+                    joint_attention_kwargs=self.joint_attention_kwargs, return_dict=False,
+                )
                 with self.transformer.cache_context("cond"):
-                    noise_pred = self.transformer(
-                        hidden_states=latents,
-                        timestep=timestep / 1000,
-                        guidance=guidance,
-                        pooled_projections=new_pooled_embeds,
-                        encoder_hidden_states=new_prompt_embeds,
-                        txt_ids=text_ids,
-                        img_ids=latent_image_ids,
-                        joint_attention_kwargs=self.joint_attention_kwargs,
-                        return_dict=False,
-                    )[0]
+                    if activation_guidance is not None and activation_guidance.active(i):
+                        if do_true_cfg:
+                            raise ValueError("Activation CLS guidance currently supports conditional FLUX only")
+                        noise_pred = activation_guidance.predict(self, i, t, latents, transformer_kwargs)
+                    else:
+                        noise_pred = self.transformer(**transformer_kwargs)[0]
 
                 if do_true_cfg:
                     if negative_image_embeds is not None:

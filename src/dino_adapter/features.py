@@ -25,13 +25,24 @@ class DinoFeatures:
         if getattr(self.model.config, 'num_register_tokens', 0):
             raise ValueError('Use a DINO checkpoint without register tokens')
 
-    @torch.no_grad()
-    def __call__(self, image, target_grid):
-        rgb = pil_to_tensor(image.convert('RGB')).unsqueeze(0).to(self.device).float() / 255
-        rgb = F.interpolate(rgb, (self.size, self.size), mode='bicubic', align_corners=False, antialias=True)
+    def tensor_features(self, rgb, target_grid=None):
+        """Differentiable BCHW RGB [0,1] -> patches, CLS; no PIL/detach/clamp."""
+        if rgb.ndim != 4 or rgb.shape[1] != 3:
+            raise ValueError('Expected BCHW RGB')
+        rgb = F.interpolate(rgb.float(), (self.size, self.size), mode='bicubic',
+                            align_corners=False, antialias=True)
         mean = rgb.new_tensor([.485, .456, .406])[None, :, None, None]
         std = rgb.new_tensor([.229, .224, .225])[None, :, None, None]
         seq = self.model(pixel_values=(rgb - mean) / std).last_hidden_state.float()
         side = self.size // self.model.config.patch_size
-        patches = align_patches(seq[:, 1:], (side, side), target_grid)
-        return patches.cpu(), F.normalize(seq[:, 0], dim=-1).cpu()
+        patches = align_patches(seq[:, 1:], (side, side), target_grid or (side, side))
+        return patches, F.normalize(seq[:, 0], dim=-1)
+
+    def cls_from_rgb(self, rgb):
+        return self.tensor_features(rgb)[1]
+
+    @torch.no_grad()
+    def __call__(self, image, target_grid):
+        rgb = pil_to_tensor(image.convert('RGB')).unsqueeze(0).to(self.device).float() / 255
+        patches, cls = self.tensor_features(rgb, target_grid)
+        return patches.cpu(), cls.cpu()

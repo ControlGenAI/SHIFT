@@ -119,3 +119,11 @@ No model or dataset collection starts implicitly.
 See [the training and steering guide](docs/DINO_ADAPTER.md) for artifact formats,
 server commands, constant-direction controls, and limitations. Existing SHIFT
 launchers continue to use their original steering methods.
+
+### CLS guidance with activation optimization
+
+A second experiment optimizes post-block image activations against **actual DINO
+CLS of the decoded one-step prediction**, without an inverse adapter or a learned
+CLS predictor. It also includes an output-velocity optimization control and
+train-pair CLS mean-difference extraction (including reuse of cached CLS tensors).
+See [CLS_GUIDANCE.md](docs/CLS_GUIDANCE.md) for server commands and limitations.

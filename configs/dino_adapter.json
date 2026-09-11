@@ -1,0 +1,23 @@
+{
+  "model": "black-forest-labs/FLUX.1-schnell",
+  "model_revision": "741f7c3ce8b383c54771c7003378a50191e9efe9",
+  "dino_model": "facebook/dinov2-large",
+  "dino_revision": "47b73eefe95e8d44ec3623f8890bd894b6ea2d6c",
+  "dino_size": 448,
+  "width": 512,
+  "height": 512,
+  "blocks": "all",
+  "step": 0,
+  "inference_steps": 4,
+  "guidance_scale": 0.0,
+  "roi": [0.25, 0.3125, 0.75, 0.5625],
+  "alphas": [0.0, 0.5, 1.0, 2.0],
+  "training": {
+    "epochs": 20,
+    "token_batch": 256,
+    "learning_rate": 0.0001,
+    "hidden": 256,
+    "layers": 4,
+    "seed": 42
+  }
+}

@@ -1,0 +1,37 @@
+"""Full-frame DINO features; both patch grids cover the same image extent."""
+import torch
+import torch.nn.functional as F
+from torchvision.transforms.functional import pil_to_tensor
+
+
+def align_patches(patches, source_grid, target_grid):
+    b, n, d = patches.shape
+    if n != source_grid[0] * source_grid[1]:
+        raise ValueError('Invalid source patch grid')
+    grid = patches.transpose(1, 2).reshape(b, d, *source_grid)
+    if tuple(source_grid) != tuple(target_grid):
+        grid = F.interpolate(grid, size=target_grid, mode='bilinear', align_corners=False)
+    return F.normalize(grid.flatten(2).transpose(1, 2), dim=-1)
+
+
+class DinoFeatures:
+    def __init__(self, model_name, size, device, revision=None):
+        from transformers import AutoModel
+        self.model = AutoModel.from_pretrained(model_name, revision=revision).to(device).eval()
+        self.model.requires_grad_(False)
+        self.size, self.device = size, device
+        if size % self.model.config.patch_size:
+            raise ValueError('DINO size must be divisible by patch size')
+        if getattr(self.model.config, 'num_register_tokens', 0):
+            raise ValueError('Use a DINO checkpoint without register tokens')
+
+    @torch.no_grad()
+    def __call__(self, image, target_grid):
+        rgb = pil_to_tensor(image.convert('RGB')).unsqueeze(0).to(self.device).float() / 255
+        rgb = F.interpolate(rgb, (self.size, self.size), mode='bicubic', align_corners=False, antialias=True)
+        mean = rgb.new_tensor([.485, .456, .406])[None, :, None, None]
+        std = rgb.new_tensor([.229, .224, .225])[None, :, None, None]
+        seq = self.model(pixel_values=(rgb - mean) / std).last_hidden_state.float()
+        side = self.size // self.model.config.patch_size
+        patches = align_patches(seq[:, 1:], (side, side), target_grid)
+        return patches.cpu(), F.normalize(seq[:, 0], dim=-1).cpu()

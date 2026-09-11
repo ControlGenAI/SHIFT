@@ -107,3 +107,15 @@ If our work assists your research, feel free to cite:
   year      = {2025}
 }
 ```
+
+## Invertible DINO image adapter
+
+A separate experimental path supports a RealNVP bridge `h <-> (z, r)` on the
+image output of SHIFT's double-stream blocks. Defaults: **all double blocks,
+step 0**, one adapter per block and one-block-at-a-time steering comparisons.
+Training consumes saved spatial activations and final-image DINO patch features.
+No model or dataset collection starts implicitly.
+
+See [the training and steering guide](docs/DINO_ADAPTER.md) for artifact formats,
+server commands, constant-direction controls, and limitations. Existing SHIFT
+launchers continue to use their original steering methods.

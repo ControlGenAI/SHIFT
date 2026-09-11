@@ -22,6 +22,44 @@ CPU-тесты, включая маленькие FLUX/DINO со случайн�
 Веса FLUX, VAE, DINO заморожены. ROI глаз не используется: CLS — глобальная цель,
 поправка разрешена на всех image-токенах.
 
+## 0. Подготовка сервера
+
+Все команды ниже выполняются из корня репозитория в Python-окружении сервера.
+Для нового клона:
+
+```bash
+git clone --branch feat/dino-invertible-adapter https://github.com/ControlGenAI/SHIFT.git SHIFT-cls
+cd SHIFT-cls
+```
+
+Если SHIFT уже склонирован, перейдите в его каталог и обновите ветку:
+
+```bash
+git fetch origin
+git switch feat/dino-invertible-adapter
+git pull --ff-only origin feat/dino-invertible-adapter
+```
+
+Сначала установите CUDA-версию PyTorch и torchvision под сервер, затем зависимости
+SHIFT. Если используется готовое окружение SHIFT, активируйте его:
+
+```bash
+python -m pip install -r requirements.txt
+python -c "import torch; print('CUDA:', torch.cuda.is_available()); print('BF16:', torch.cuda.is_bf16_supported())"
+```
+
+Для оптимизации оба значения должны быть `True`: FLUX и VAE загружаются в BF16.
+На первом запуске потребуются указанные в конфиге веса FLUX и DINO из Hugging Face
+или их локальный кеш; доступ к репозиторию модели должен быть настроен на сервере.
+Сбор датасета и обучение адаптеров команды ниже не запускают.
+
+`out/dataset200` — путь к **уже подготовленному** датасету на сервере, его нет в Git.
+Замените этот путь на свой во всех командах. Нужны `dataset.json` и файлы, на которые
+он ссылается: `features.pt` с CLS для `--cached-cls` либо PNG для пересчёта CLS.
+Для сравнения в `dataset.json` должны быть положительные test-примеры с prompt/seed;
+их пары и seed должны отличаться от train. При отсутствии test используйте val
+для настройки, а окончательное сравнение проводите на отдельном test-наборе.
+
 ## 1. Извлечение CLS и вычисление mean diff
 
 Если есть `out/dataset200` из эксперимента адаптеров, в его `features.pt` уже есть
@@ -104,6 +142,22 @@ python -m src.dino_adapter.cls_experiment \
 Выборка по умолчанию ограничена первым примером. Для расширения укажите
 `--num-samples N`. Для повторов используйте новый output: файлы не перезаписываются.
 
+После первого прогона проверьте в `out/cls_guidance_activation/` и
+`out/cls_guidance_velocity/`:
+
+- `*_baseline.png` и вариант с `alpha=0`: в JSON его `baseline_pixel_max_abs`
+  должен быть 0 при воспроизводимом запуске с тем же seed.
+- JSON ненулевого alpha: `selected_iteration`, `baseline_semantic_loss`,
+  `final_semantic_loss`, `selected_relative_rms`. Если `selected_iteration=0`
+  и RMS равен 0, улучшение не было выбрано и сохранился baseline.
+- Финальные PNG: удаление очков, лицо и остальные детали. Снижение one-step loss
+  само по себе не подтверждает нужного визуального изменения.
+
+Для перебора всех double-блоков поставьте `"blocks": "all"` в копии
+`configs/cls_guidance.json` и передайте её через `--config` перед `optimize`.
+`"steps": [0]` оставьте для вмешательства только на первом шаге. Каждый блок
+будет проверен в отдельной генерации, поэтому число прогонов существенно вырастет.
+
 ## Как считается градиент
 
 На выбранном шаге фиксируем исходный латент `z_sigma`, conditioning и исходный
@@ -150,6 +204,7 @@ conditioning, параметры моделей или scheduler state. Alpha=0 
 ## Параметры и диагностика
 
 В `cls_optimization`:
+
 - `steps`: индексы шагов (по умолчанию `[0]`).
 - `iterations`: число Adam-обновлений (20), после последнего есть оценка результата.
 - `learning_rate`: шаг в нормализованной поправке u (0.01).
@@ -190,6 +245,7 @@ DINO получает непрерывный выход VAE до clipping/окр
 CPU-проверки без pretrained весов:
 
 ```bash
+python -m pip install pytest
 python -m pytest tests -q
 python -m src.dino_adapter.cls_experiment --help
 ```

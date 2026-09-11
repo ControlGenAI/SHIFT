@@ -186,3 +186,37 @@ def test_steer_uses_shift_style_hook_and_writes_all_block_controls(tmp_path, mon
     assert all(not b._forward_hooks for b in model.transformer_blocks)
     torch.testing.assert_close(calls[0], calls[1], rtol=1e-5, atol=1e-5)
     assert (tmp_path / 'results/visual_review.csv').exists()
+
+
+def test_direct_image_edit_is_raw_post_block_shift():
+    from src.dino_adapter.steering import DirectImageEdit
+    h, direction = torch.randn(1, 4, 8), torch.randn(4, 8)
+    torch.testing.assert_close(DirectImageEdit(direction, .5)(h), h - .5 * direction)
+    torch.testing.assert_close(DirectImageEdit(direction, 0)(h), h, rtol=0, atol=0)
+    torch.testing.assert_close(DirectImageEdit(direction, -1)(h), h + direction)
+
+
+def test_image_only_mode_never_loads_adapter(tmp_path, monkeypatch):
+    from PIL import Image
+    from src.dino_adapter.directions import build_directions
+    from src.dino_adapter import steering
+    root, config = fake_dataset(tmp_path)
+    config.update(steering_mode='image_tokens', alphas=[0., 1.])
+    build_directions(config, root, tmp_path / 'directions.pt')
+    model = SimpleNamespace(transformer_blocks=[Block(), Block()])
+    monkeypatch.setattr(steering, 'load_pipeline', lambda *args: SimpleNamespace(transformer=model))
+    def forbidden(*args):
+        pytest.fail('Direct image steering must not load an adapter')
+    monkeypatch.setattr(steering, 'load_adapter', forbidden)
+    def fake_generate(pipe, cfg, prompt, seed, hook=None):
+        for step in range(cfg['inference_steps']):
+            for block in model.transformer_blocks:
+                block(torch.zeros(1, 2, 8), torch.zeros(1, 4, 8))
+            if hook:
+                hook.on_step_end(pipe, step, None, {})
+        return Image.new('RGB', (32, 32))
+    monkeypatch.setattr(steering, 'generate', fake_generate)
+    steering.steer(config, root, None, tmp_path / 'directions.pt', tmp_path / 'results', 'cpu')
+    rows = json.loads((tmp_path / 'results/generations.json').read_text())
+    assert len(rows) == 5
+    assert {r['mode'] for r in rows} == {'baseline', 'image_tokens'}

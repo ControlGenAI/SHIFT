@@ -51,7 +51,28 @@ class ConstantEdit:
         return changed
 
 
+class DirectImageEdit:
+    """Raw paired post-block direction: h' = h - alpha * mean(h_pos-h_neg)."""
+    def __init__(self, direction, alpha):
+        self.direction, self.alpha, self.stats = direction, alpha, {}
+
+    @torch.no_grad()
+    def __call__(self, h):
+        direction = self.direction.to(device=h.device, dtype=torch.float32)
+        if direction.shape != h.shape[-2:]:
+            raise ValueError('Image-token direction must match [tokens, channels]')
+        changed = h.float() - self.alpha * direction
+        self.stats = dict(edit_rms=rms(changed.to(h.dtype).float() - h.float()))
+        return changed
+
+
 def steer(config, dataset, adapters, directions, output, device, split='test'):
+    mode = config.get('steering_mode', 'adapter_comparison')
+    if mode not in ('adapter_comparison', 'image_tokens'):
+        raise ValueError('Unknown steering_mode')
+    direct = mode == 'image_tokens'
+    if not direct and adapters is None:
+        raise ValueError('Adapter comparison requires --adapters')
     data = load_dataset(dataset)
     require_compatible(config, data['config'])
     direction_data = torch.load(directions, map_location='cpu', weights_only=True)
@@ -74,6 +95,10 @@ def steer(config, dataset, adapters, directions, output, device, split='test'):
     save_json(root / 'config.json', config)
     # Check every artifact before loading the large model.
     for block in blocks:
+        if str(block) not in direction_data['vectors']:
+            raise ValueError('No direction for block')
+        if direct:
+            continue
         adapter, payload = load_adapter(Path(adapters) / f'block_{block}.pt', 'cpu')
         require_compatible(config, payload['config'])
         if payload['block'] != block or payload['step'] != config['step'] or payload['grid'] != data['grid']:
@@ -84,7 +109,8 @@ def steer(config, dataset, adapters, directions, output, device, split='test'):
             raise ValueError('No direction for block')
         if direction_data['vectors'][str(block)]['z'].shape[-1] != adapter.z_dim:
             raise ValueError('Direction dimension differs from adapter')
-    del adapter
+    if not direct:
+        del adapter
     pipe = load_pipeline(config, device)
     entries = []
     for sample in samples:
@@ -96,6 +122,19 @@ def steer(config, dataset, adapters, directions, output, device, split='test'):
         entries.append(dict(sample_id=sample['id'], mode='baseline', block=None, alpha=0.,
                             image=str(baseline_path.relative_to(root)), seed=sample['seed']))
         for block in blocks:
+            if direct:
+                direction = direction_data['vectors'][str(block)]['h']
+                for index, alpha in enumerate(config['alphas']):
+                    edit = DirectImageEdit(direction, alpha)
+                    with ImageBlockHook(pipe.transformer, block, config['step'], edit) as hook:
+                        image = generate(pipe, config, sample['prompt'], sample['seed'], hook)
+                    path = folder / f'block_{block}_alpha_{index}_image_tokens.png'
+                    image.save(path)
+                    entries.append(dict(sample_id=sample['id'], mode='image_tokens', block=block,
+                                        alpha=alpha, image=str(path.relative_to(root)), seed=sample['seed'],
+                                        **edit.stats))
+                    save_json(root / 'generations.json', entries)
+                continue
             checkpoint = Path(adapters) / f'block_{block}.pt'
             adapter, _ = load_adapter(checkpoint, device)
             vectors = direction_data['vectors'][str(block)]

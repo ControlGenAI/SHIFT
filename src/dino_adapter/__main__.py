@@ -20,7 +20,7 @@ def main():
     directions.add_argument('--output', required=True)
     steer = sub.add_parser('steer', help='Image post-block adapter/control sweeps, one block at a time')
     steer.add_argument('--dataset', required=True)
-    steer.add_argument('--adapters', required=True)
+    steer.add_argument('--adapters', help='Required only for adapter_comparison mode')
     steer.add_argument('--directions', required=True)
     steer.add_argument('--output', required=True)
     steer.add_argument('--device', default='cuda:0')

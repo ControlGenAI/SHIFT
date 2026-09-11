@@ -179,3 +179,39 @@ python -m src.dino_adapter --help
 
 Тесты используют маленькие искусственные tensors и fake-модули. Они не скачивают
 веса, не собирают активации настоящего FLUX и не запускают генерации.
+
+## Прямой стиринг image tokens без адаптера
+
+`configs/image_tokens.json` включает самостоятельный контроль:
+`h' = h - alpha * mean_train(h_with_glasses - h_without_glasses)`.
+Берётся `img_hidden` после double-блока; все пространственные токены сохраняются,
+направление вне той же ROI обнулено. Все double-блоки проверяются отдельно на
+шаге 0. Текстовые токены не меняются. Обученные адаптеры не требуются.
+
+```bash
+python -m src.dino_adapter --config configs/image_tokens.json steer \
+  --dataset experiments/dino_adapter/dataset \
+  --directions experiments/dino_adapter/directions.pt \
+  --output experiments/dino_adapter/image_tokens_step0 \
+  --device cuda:0
+```
+
+`directions.pt` строится прежней командой `directions` по сохранённым train-парам;
+она уже содержит и DINO-направления, и направления в h для каждого блока.
+Здесь alpha — множитель сырой средней разности активаций, без нормализации по RMS
+и без калибровки по адаптеру. Поэтому равные alpha в двух конфигурациях не означают
+равную силу изменения атрибута. Используйте sweep, визуальную оценку и метрики.
+Положительный alpha удаляет очки, отрицательный добавляет. `alpha=0` — контроль.
+
+Для оценки сохранённых изображений:
+
+```bash
+python -m src.dino_adapter --config configs/image_tokens.json evaluate \
+  --directions experiments/dino_adapter/directions.pt \
+  --results experiments/dino_adapter/image_tokens_step0 \
+  --device cuda:0
+```
+
+`metrics.json` содержит те же прокси-метрики, что и для адаптера. Автоматические
+matched-effect пары формируются только внутри режима `adapter_comparison`;
+результаты этого самостоятельного режима сравнивайте с ним по alpha-кривым.

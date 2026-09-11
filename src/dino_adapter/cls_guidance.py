@@ -41,6 +41,12 @@ class CLSActivationGuidance:
     def __init__(self, dino, direction, block, steps=(0,), alpha=1., iterations=20,
                  learning_rate=.01, preservation_weight=1., max_relative_rms=.05,
                  resolution=(512, 512), optimization_space='activation'):
+        if (type(block) is not int or type(iterations) is not int or
+                not isinstance(steps, (list, tuple)) or any(type(s) is not int for s in steps)):
+            raise ValueError('Block, steps and iterations must be integer indices/counts')
+        if (not isinstance(resolution, (list, tuple)) or len(resolution) != 2 or
+                any(type(s) is not int or s <= 0 for s in resolution)):
+            raise ValueError('Resolution must be positive integer (height, width)')
         if (iterations < 1 or learning_rate <= 0 or preservation_weight < 0 or
                 max_relative_rms <= 0 or block < 0 or not steps or min(steps) < 0 or
                 len(set(steps)) != len(steps) or
@@ -60,6 +66,12 @@ class CLSActivationGuidance:
     def active(self, step):
         return step in self.steps
 
+    def validate_run(self, height, width, num_steps):
+        if (height, width) != tuple(self.resolution):
+            raise ValueError('CLS resolution must match the pipeline height and width')
+        if max(self.steps) >= num_steps:
+            raise ValueError('CLS guidance step is outside the actual denoising schedule')
+
     def cls_of_velocity(self, pipe, latents, velocity, sigma):
         # Keep clean estimate subtraction in FP32 before casting for the VAE.
         clean = latents.float() - sigma.float() * velocity.float()
@@ -77,6 +89,8 @@ class CLSActivationGuidance:
                 raise ValueError('FLUX, VAE and DINO must be frozen and in eval mode')
         if self.space == 'activation' and self.block >= len(pipe.transformer.transformer_blocks):
             raise ValueError('Selected double block does not exist')
+        if getattr(pipe.transformer, 'is_cache_enabled', False):
+            raise ValueError('Disable transformer caching for repeated differentiable CLS forwards')
         # This pipeline starts from scheduler index 0. Explicitly check that contract.
         if hasattr(pipe.scheduler, 'timesteps') and timestep is not None:
             if not torch.equal(torch.as_tensor(timestep).cpu(), pipe.scheduler.timesteps[step].cpu()):

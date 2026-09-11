@@ -846,6 +846,8 @@ class FluxPipeline(
             negative_prompt_embeds is not None and negative_pooled_prompt_embeds is not None
         )
         do_true_cfg = true_cfg_scale > 1 and has_neg_prompt
+        if activation_guidance is not None and do_true_cfg:
+            raise ValueError("Activation CLS guidance currently supports conditional FLUX only")
         (
             prompt_embeds,
             pooled_prompt_embeds,
@@ -925,6 +927,8 @@ class FluxPipeline(
         )
         num_warmup_steps = max(len(timesteps) - num_inference_steps * self.scheduler.order, 0)
         self._num_timesteps = len(timesteps)
+        if activation_guidance is not None:
+            activation_guidance.validate_run(height, width, len(timesteps))
 
         # handle guidance
         if self.transformer.config.guidance_embeds:
@@ -1088,8 +1092,6 @@ class FluxPipeline(
                 )
                 with self.transformer.cache_context("cond"):
                     if activation_guidance is not None and activation_guidance.active(i):
-                        if do_true_cfg:
-                            raise ValueError("Activation CLS guidance currently supports conditional FLUX only")
                         noise_pred = activation_guidance.predict(self, i, t, latents, transformer_kwargs)
                     else:
                         noise_pred = self.transformer(**transformer_kwargs)[0]

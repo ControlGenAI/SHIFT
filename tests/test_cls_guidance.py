@@ -172,3 +172,35 @@ def test_real_scheduler_advances_only_in_outer_loop_and_can_keep_baseline():
         torch.testing.assert_close(velocity, baseline, rtol=0, atol=0)
         latents = scheduler.step(velocity, t, latents, return_dict=False)[0]
         assert scheduler.step_index == step + 1
+
+
+def test_bf16_rounding_cannot_exceed_the_actual_change_budget():
+    class Identity(torch.nn.Module):
+        def forward(self, hidden_states):
+            return (hidden_states,)
+    # Around BF16 value 1, a small negative FP32 change can round to a larger
+    # representable change. An FP32-only projection must not accept that state.
+    latents = torch.ones(1, 4, 3, dtype=torch.bfloat16)
+    pipe = SimpleNamespace(transformer=Identity().eval(), vae=VAE(), vae_scale_factor=1,
+        scheduler=SimpleNamespace(sigmas=torch.tensor([.75, 0.])),
+        _unpack_latents=lambda x, *args: x.transpose(1, 2).reshape(1, 3, 2, 2))
+    guide = CLSActivationGuidance(Dino(), torch.tensor([.1, -.1, 0.]), 0,
+        iterations=3, preservation_weight=0., max_relative_rms=.002,
+        resolution=(2, 2), optimization_space='velocity')
+    with torch.no_grad():
+        actual = guide.predict(pipe, 0, None, latents, dict(hidden_states=latents))
+    candidates = [log for log in guide.logs if 'feasible' in log]
+    assert any(not log['feasible'] for log in candidates)
+    assert max(guide.logs[-1]['selected_relative_rms']) <= guide.cap
+    actual_rms = (actual.float() - latents.float()).square().mean().sqrt()
+    assert actual_rms <= guide.cap
+
+
+def test_guidance_rejects_transformer_cache_before_forward():
+    import pytest
+    transformer = Transformer().eval()
+    transformer.is_cache_enabled = True
+    pipe = SimpleNamespace(transformer=transformer, vae=VAE())
+    guide = CLSActivationGuidance(Dino(), torch.tensor([.1, -.1, 0.]), 0)
+    with pytest.raises(ValueError, match='caching'):
+        guide.predict(pipe, 0, None, torch.ones(1, 4, 3), {})

@@ -13,6 +13,8 @@ from .cls_guidance import CLSActivationGuidance
 
 def read_cls_config(path):
     config = json.loads(Path(path).read_text())
+    if any(type(config[k]) is not int for k in ('width', 'height', 'dino_size', 'inference_steps')):
+        raise ValueError('Image sizes and inference_steps must be integers')
     if config['width'] <= 0 or config['height'] <= 0 or config['width'] % 16 or config['height'] % 16:
         raise ValueError('FLUX image dimensions must be positive multiples of 16')
     if config['dino_size'] <= 0 or config['inference_steps'] < 1:
@@ -23,7 +25,7 @@ def read_cls_config(path):
         raise ValueError('Use distinct finite alphas including the zero control')
     blocks = config['blocks']
     if blocks != 'all' and (not isinstance(blocks, list) or not blocks or
-            len(set(blocks)) != len(blocks) or any(not isinstance(b, int) or b < 0 for b in blocks)):
+            len(set(blocks)) != len(blocks) or any(type(b) is not int or b < 0 for b in blocks)):
         raise ValueError('blocks must be all or distinct nonnegative indices')
     return config
 

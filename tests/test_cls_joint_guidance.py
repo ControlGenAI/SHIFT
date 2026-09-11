@@ -84,7 +84,8 @@ class Dino:
         return F.normalize(rgb.mean((-1, -2)), dim=-1)
 
 
-def test_joint_guidance_matches_plain_adam_on_coupled_tokens_without_caps():
+@pytest.mark.parametrize('scaling', ['rms', 'none'])
+def test_joint_guidance_matches_plain_adam_on_coupled_tokens_without_caps(scaling):
     torch.manual_seed(3)
     transformer = CoupledTransformer().eval()
     latents = torch.randn(1, 4, 3)
@@ -95,7 +96,7 @@ def test_joint_guidance_matches_plain_adam_on_coupled_tokens_without_caps():
         _unpack_latents=lambda x, *args: x.transpose(1, 2).reshape(1, 3, 2, 2))
     guide = CLSActivationGuidance(Dino(), torch.tensor([.1, -.1, 0.]), [0, 1, 2], block_mode='joint',
         iterations=3, learning_rate=.2, preservation_weight=0., max_relative_rms=None,
-        selection='last', resolution=(2, 2))
+        selection='last', resolution=(2, 2), correction_scaling=scaling)
     scales = []
     with torch.no_grad():
         text, h = torch.zeros(1, 2, 3), latents
@@ -110,7 +111,7 @@ def test_joint_guidance_matches_plain_adam_on_coupled_tokens_without_caps():
         text, h = torch.zeros(1, 2, 3), latents
         for block, scale, u in zip(transformer.transformer_blocks, scales, corrections):
             text, h = block(text, h)
-            h = h + scale * u
+            h = h + (scale if scaling == 'rms' else 1.) * u
         return h * .4
     for _ in range(3):
         optimizer.zero_grad(set_to_none=True)

@@ -143,7 +143,38 @@ def guidance_options(config):
                 max_relative_rms=settings['max_relative_rms'], selection=settings.get('selection', 'best'),
                 resolution=(config['height'], config['width']),
                 optimization_space=settings.get('space', 'activation'),
-                block_mode=settings.get('block_mode', 'independent'))
+                block_mode=settings.get('block_mode', 'independent'),
+                correction_scaling=settings.get('correction_scaling', 'rms'),
+                match_rms_adam=settings.get('match_rms_adam', False))
+
+
+def make_guidance(config, dino, direction, block, alpha, prediction_callback=None, iteration_callback=None,
+                  reference_rgb=None):
+    settings = config['cls_optimization']
+    objective = settings.get('objective', 'one_step')
+    if objective == 'one_step':
+        return CLSActivationGuidance(dino, direction, block, alpha=alpha,
+                                    prediction_callback=prediction_callback, **guidance_options(config))
+    if objective != 'final':
+        raise ValueError('objective must be one_step or final')
+    if (settings.get('space') != 'activation' or settings.get('block_mode') != 'joint' or
+            settings['max_relative_rms'] is not None or settings['preservation_weight'] != 0 or
+            settings.get('selection') != 'last'):
+        raise ValueError('Final objective requires joint activation, null RMS cap, zero activation penalty and last selection')
+    saved = settings.get('save_iteration_predictions', [])
+    if (not isinstance(saved, list) or any(type(i) is not int or i < 0 or i > settings['iterations'] for i in saved)
+            or len(set(saved)) != len(saved)):
+        raise ValueError('save_iteration_predictions must contain distinct iteration indices in 0..iterations')
+    from .cls_trajectory import CLSTrajectoryGuidance
+    return CLSTrajectoryGuidance(dino, direction, block, steps=settings['steps'], alpha=alpha,
+        iterations=settings['iterations'], learning_rate=settings['learning_rate'],
+        resolution=(config['height'], config['width']),
+        image_preservation_weight=settings['image_preservation_weight'], edit_roi=settings.get('edit_roi'),
+        inside_weight=settings.get('inside_weight', .05), view_scales=settings.get('view_scales', [1., .5]),
+        dino_checkpointing=settings.get('dino_checkpointing', True),
+        correction_scaling=settings.get('correction_scaling', 'rms'),
+        match_rms_adam=settings.get('match_rms_adam', False),
+        prediction_callback=prediction_callback, iteration_callback=iteration_callback, reference_rgb=reference_rgb)
 
 
 def optimize(config, rows, direction_path, output, device):
@@ -152,6 +183,11 @@ def optimize(config, rows, direction_path, output, device):
         raise ValueError('CLS direction and guidance DINO model/preprocessing differ')
     if not rows or len({r['id'] for r in rows}) != len(rows):
         raise ValueError('Need nonempty prompts with unique IDs')
+    conditioning = config['cls_optimization'].get('conditioning', 'source')
+    if conditioning not in ('source', 'paired_target'):
+        raise ValueError('conditioning must be source or paired_target')
+    if conditioning == 'paired_target' and config['cls_optimization'].get('objective') != 'final':
+        raise ValueError('paired_target conditioning requires the final-image objective')
     for row in rows:
         if row['pair_id'] in payload['train_pair_ids'] or row['seed'] in payload.get('train_seeds', []):
             raise ValueError('Use held-out pairs and seeds for comparisons')
@@ -159,6 +195,8 @@ def optimize(config, rows, direction_path, output, device):
             raise ValueError('Need a prompt and integer seed')
         if not row['id'] or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-' for c in row['id']):
             raise ValueError('Unsafe output ID')
+        if conditioning == 'paired_target' and (not isinstance(row.get('target_prompt'), str) or not row['target_prompt'].strip()):
+            raise ValueError('paired_target requires an explicit target_prompt or a matching negative dataset row')
     settings = config['cls_optimization']
     space = settings.get('space', 'activation')
     if not settings['steps'] or any(s < 0 or s >= config['inference_steps'] for s in settings['steps']):
@@ -166,7 +204,8 @@ def optimize(config, rows, direction_path, output, device):
     # Validate optimization settings without model loading.
     options = guidance_options(config)
     joint = options['block_mode'] == 'joint'
-    CLSActivationGuidance(None, payload['direction'], [0] if joint else 0, alpha=config['alphas'][0], **options)
+    preflight = make_guidance(config, None, payload['direction'], [0] if joint else 0, config['alphas'][0])
+    preflight.validate_run(config['height'], config['width'], config['inference_steps'])
     root = Path(output)
     root.mkdir(parents=True, exist_ok=False)
     save_json(root / 'config.json', config)
@@ -187,20 +226,37 @@ def optimize(config, rows, direction_path, output, device):
         with torch.no_grad():
             _, baseline_cls = dino(baseline, None)
         entries.append(dict(sample_id=row['id'], mode='baseline', image=f"{row['id']}_baseline.png"))
+        source_rgb = None
+        if conditioning == 'paired_target':
+            from torchvision.transforms.functional import pil_to_tensor
+            source_rgb = pil_to_tensor(baseline.convert('RGB')).unsqueeze(0).float() / 255
+            prompt_only = generate(pipe, config, row['target_prompt'], row['seed'])
+            prompt_only.save(root / f"{row['id']}_target_prompt_only.png")
+            entries.append(dict(sample_id=row['id'], mode='target_prompt_only',
+                prompt=row['target_prompt'], image=f"{row['id']}_target_prompt_only.png"))
         for block in conditions:
             for index, alpha in enumerate(config['alphas']):
                 block_label = 'joint_blocks' + '-'.join(map(str, block)) if joint else f'block{block}'
-                name = f"{row['id']}_{space}_{block_label}_alpha{index}"
+                objective = settings.get('objective', 'one_step')
+                objective_label = '_final' if objective == 'final' else ''
+                name = f"{row['id']}_{space}_{block_label}{objective_label}_alpha{index}"
                 intervention = dict(block=None if joint or space != 'activation' else block,
                     blocks=block if joint else ([block] if space == 'activation' else []),
-                    block_mode=options['block_mode'])
+                    block_mode=options['block_mode'], objective=objective, conditioning=conditioning,
+                    correction_scaling=options['correction_scaling'], match_rms_adam=options['match_rms_adam'],
+                    generation_prompt=row['target_prompt'] if conditioning == 'paired_target' and alpha != 0 else row['prompt'])
                 def save_prediction(step, stage, decoded, stem=name):
                     preview = pipe.image_processor.postprocess(decoded.detach(), output_type='pil')[0]
                     preview.save(root / f'{stem}_step{step}_{stage}.png')
-                guidance = CLSActivationGuidance(dino, payload['direction'], block,
-                    alpha=alpha, **options,
-                    prediction_callback=save_prediction if settings.get('save_step_predictions', False) else None)
-                image = pipe(row['prompt'], width=config['width'], height=config['height'],
+                def save_iteration(iteration, decoded, stem=name):
+                    if iteration in settings.get('save_iteration_predictions', []):
+                        preview = pipe.image_processor.postprocess(decoded.detach(), output_type='pil')[0]
+                        preview.save(root / f'{stem}_iteration{iteration}_final.png')
+                        print(f'{stem}: saved final image at iteration {iteration}', flush=True)
+                guidance = make_guidance(config, dino, payload['direction'], block, alpha,
+                    prediction_callback=save_prediction if settings.get('save_step_predictions', False) else None,
+                    iteration_callback=save_iteration if objective == 'final' else None, reference_rgb=source_rgb)
+                image = pipe(intervention['generation_prompt'], width=config['width'], height=config['height'],
                     num_inference_steps=config['inference_steps'], guidance_scale=config['guidance_scale'],
                     max_sequence_length=256, generator=torch.Generator('cpu').manual_seed(row['seed']),
                     structure_strength=0., txt_steering={'vector': None}, activation_guidance=guidance).images[0]
@@ -214,12 +270,73 @@ def optimize(config, rows, direction_path, output, device):
                 delta = np.asarray(image, dtype=np.float32) - np.asarray(baseline, dtype=np.float32)
                 metrics = dict(final_cls_removal_proxy=projected_removal,
                                baseline_pixel_mae=float(abs(delta).mean()), baseline_pixel_max_abs=float(abs(delta).max()))
+                if objective == 'final' and guidance.references:
+                    reference = guidance.references[-1]
+                    metrics.update(final_png_target_loss=float(.5 * (final_cls - reference['target_cls'][0]).square().sum(-1).mean()),
+                        evaluated_to_png_cls_l2=float((final_cls - reference['selected_cls'][0]).norm(dim=-1).mean()))
                 save_json(root / f'{name}.json', dict(sample=row, **intervention,
                           alpha=alpha, space=space, logs=guidance.logs, **metrics))
                 entries.append(dict(sample_id=row['id'], mode=space, **intervention,
                                     alpha=alpha, image=f'{name}.png', **metrics))
                 save_json(root / 'generations.json', entries)
     save_json(root / 'generations.json', entries)
+
+
+def audit_direction(features_path, direction_path, output):
+    """Check held-out separation using cached CLS only; no model loading/training."""
+    features = torch.load(features_path, map_location='cpu', weights_only=True)
+    payload = torch.load(direction_path, map_location='cpu', weights_only=True)
+    if features['cls_signature'] != payload['cls_signature']:
+        raise ValueError('Features and direction DINO signatures differ')
+    rows = features['rows']
+    statistics = paired_mean(rows, features['cls'])
+    direction = payload['direction'].float()
+    if (statistics['train_pair_ids'] != payload['train_pair_ids'] or
+            direction.shape != statistics['direction'].shape or
+            not torch.allclose(direction, statistics['direction'], rtol=1e-4, atol=1e-6)):
+        raise ValueError('Direction does not match the train mean difference in these features')
+    vectors = F.normalize(features['cls'].float(), dim=-1)
+    center = (statistics['mean_positive'] + statistics['mean_negative']) / 2
+    scores = ((vectors - center) * direction).sum(-1)
+    splits = {}
+    for split in ('train', 'val', 'test'):
+        positive = [i for i, r in enumerate(rows) if r['split'] == split and r['label'] == 1]
+        negative = [i for i, r in enumerate(rows) if r['split'] == split and r['label'] == 0]
+        if not positive or not negative:
+            splits[split] = dict(n_positive=len(positive), n_negative=len(negative), auc=None)
+            continue
+        p, n = scores[positive], scores[negative]
+        comparison = p[:, None] - n[None, :]
+        pairs = {}
+        for i in positive + negative:
+            pairs.setdefault(rows[i]['pair_id'], {})[rows[i]['label']] = scores[i]
+        margins = torch.stack([pair[1] - pair[0] for pair in pairs.values() if len(pair) == 2]) if any(
+            len(pair) == 2 for pair in pairs.values()) else torch.empty(0)
+        splits[split] = dict(n_positive=len(positive), n_negative=len(negative),
+            auc=float(((comparison > 0).float() + .5 * (comparison == 0).float()).mean()),
+            balanced_accuracy=float(.5 * ((p > 0).float().mean() + (n <= 0).float().mean())),
+            n_complete_pairs=len(margins), paired_order_accuracy=float((margins > 0).float().mean()) if len(margins) else None,
+            paired_margin_mean=float(margins.mean()) if len(margins) else None)
+    report = dict(direction_sha256=digest(direction_path), features_sha256=digest(features_path),
+        direction_norm=float(direction.norm()), splits=splits,
+        note='Held-out separation is a necessary diagnostic, not evidence of successful image editing.')
+    path = Path(output)
+    if path.exists():
+        raise FileExistsError(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    save_json(path, report)
+    print(json.dumps(report, indent=2), flush=True)
+
+
+def held_out_prompts(samples, split, conditioning='source'):
+    rows = [r.copy() for r in samples if r['split'] == split and r['label'] == 1]
+    if conditioning == 'paired_target':
+        for row in rows:
+            matches = [r for r in samples if r['pair_id'] == row['pair_id'] and r['label'] == 0]
+            if len(matches) != 1 or matches[0]['split'] != split or matches[0]['seed'] != row['seed']:
+                raise ValueError('Need one negative prompt with matching pair, split and seed')
+            row['target_prompt'] = matches[0]['prompt']
+    return rows
 
 
 def main():
@@ -236,19 +353,37 @@ def main():
     mean = sub.add_parser('mean', help='Recompute paired mean from saved cls_features.pt, no model loading')
     mean.add_argument('--features', required=True)
     mean.add_argument('--output', required=True)
+    audit = sub.add_parser('audit', help='Held-out CLS direction separation from cached features, without models')
+    audit.add_argument('--features', required=True)
+    audit.add_argument('--direction', required=True)
+    audit.add_argument('--output', required=True)
+    evaluate = sub.add_parser('evaluate', help='Independent eyewear classifier and optional face identity on saved PNGs')
+    evaluate.add_argument('--results', required=True)
+    evaluate.add_argument('--output', required=True)
+    evaluate.add_argument('--with-identity', action='store_true', help='Use the existing optional facenet-pytorch scorer')
     opt = sub.add_parser('optimize')
     source = opt.add_mutually_exclusive_group(required=True)
     source.add_argument('--prompts')
     source.add_argument('--dataset', help='Use positive held-out prompts from existing dataset.json')
     opt.add_argument('--split', choices=['val', 'test'], default='test')
     opt.add_argument('--num-samples', type=int, default=1)
+    opt.add_argument('--learning-rate', type=float, help='Override the configured Adam LR; saved in the run config')
     opt.add_argument('--direction', required=True)
     opt.add_argument('--output', required=True)
     args = parser.parse_args()
     if args.command == 'mean':
         mean_from_features(args.features, args.output)
         return
+    if args.command == 'audit':
+        audit_direction(args.features, args.direction, args.output)
+        return
+    if args.command == 'evaluate':
+        from .cls_evaluation import evaluate_saved
+        evaluate_saved(args.results, args.output, args.device, args.with_identity)
+        return
     config = read_cls_config(args.config)
+    if args.command == 'optimize' and args.learning_rate is not None:
+        config['cls_optimization']['learning_rate'] = args.learning_rate
     if args.command == 'extract':
         extract(config, args.manifest, args.dataset, args.output, args.device, args.cached_cls)
     else:
@@ -258,7 +393,7 @@ def main():
             rows = read_rows(args.prompts)
         else:
             data = json.loads((Path(args.dataset) / 'dataset.json').read_text())
-            rows = [r for r in data['samples'] if r['split'] == args.split and r['label'] == 1]
+            rows = held_out_prompts(data['samples'], args.split, config['cls_optimization'].get('conditioning', 'source'))
         optimize(config, rows[:args.num_samples], args.direction, args.output, args.device)
 
 

@@ -147,7 +147,10 @@ def test_all_four_steps_use_last_adam_state_and_record_predictions(space, monkey
     assert all(p.grad is None for module in (pipe.transformer, pipe.vae, dino.model) for p in module.parameters())
 
 
-@pytest.mark.parametrize('filename', ['cls_velocity_guidance_all_steps.json', 'cls_joint_all_blocks_all_steps.json'])
+@pytest.mark.parametrize('filename', ['cls_velocity_guidance_all_steps.json', 'cls_joint_all_blocks_all_steps.json',
+                                    'cls_joint_final_image.json', 'cls_joint_final_image_paired_prompt.json',
+                                    'cls_joint_scaling_rms.json', 'cls_joint_scaling_none.json',
+                                    'cls_joint_scaling_none_matched.json'])
 def test_experiment_wires_unbounded_options_and_saves_step_images(tmp_path, monkeypatch, filename):
     import json
     from pathlib import Path
@@ -155,12 +158,17 @@ def test_experiment_wires_unbounded_options_and_saves_step_images(tmp_path, monk
     config = cls_experiment.read_cls_config(Path(__file__).resolve().parents[1] / 'configs' / filename)
     config.update(width=16, height=16, dino_size=8, alphas=[0., 1.])
     config['cls_optimization']['iterations'] = 1
+    final = config['cls_optimization'].get('objective') == 'final'
+    paired = config['cls_optimization'].get('conditioning') == 'paired_target'
+    if final:
+        config['cls_optimization']['save_iteration_predictions'] = [0, 1]
     pipe, dino, inputs, direction = tiny_pipeline()
     class PreparedPrompts:
         transformer = pipe.transformer
         image_processor = pipe.image_processor
         def __call__(self, prompt, **kwargs):
-            return pipe(prompt_embeds=inputs['prompt_embeds'],
+            shift = .5 if prompt == 'target prompt' else 0.
+            return pipe(prompt_embeds=inputs['prompt_embeds'] + shift,
                         pooled_prompt_embeds=inputs['pooled_prompt_embeds'], **kwargs)
     monkeypatch.setattr(cls_experiment, 'load_pipeline', lambda *args: PreparedPrompts())
     monkeypatch.setattr(cls_experiment, 'DinoFeatures', lambda *args: dino)
@@ -168,12 +176,14 @@ def test_experiment_wires_unbounded_options_and_saves_step_images(tmp_path, monk
     torch.save(dict(direction=direction, train_pair_ids=['train'], train_seeds=[1],
                     cls_signature=cls_experiment.cls_signature(config)), direction_path)
     rows = [dict(id='test1', pair_id='heldout', seed=200, prompt='test prompt')]
+    if paired:
+        rows[0]['target_prompt'] = 'target prompt'
     output = tmp_path / 'output'
     cls_experiment.optimize(config, rows, direction_path, output, 'cpu')
     entries = json.loads((output / 'generations.json').read_text())
     # Joint mode produces one edited trajectory per alpha, not one per block.
-    assert len(entries) == 3
-    zero, edited = entries[1:]
+    assert len(entries) == (4 if paired else 3)
+    zero, edited = entries[-2:]
     assert zero['alpha'] == 0 and zero['baseline_pixel_max_abs'] == 0
     stem = Path(edited['image']).stem
     for step in range(4):
@@ -181,10 +191,32 @@ def test_experiment_wires_unbounded_options_and_saves_step_images(tmp_path, monk
             assert (output / f'{stem}_step{step}_{stage}.png').is_file()
     details = json.loads((output / f'{stem}.json').read_text())
     selected = [log for log in details['logs'] if 'selected_iteration' in log]
-    assert len(selected) == 4
+    scaling = config['cls_optimization'].get('correction_scaling', 'rms')
+    matched = config['cls_optimization'].get('match_rms_adam', False)
+    assert details['correction_scaling'] == edited['correction_scaling'] == scaling
+    assert details['match_rms_adam'] == edited['match_rms_adam'] == matched
+    assert all(log['correction_scaling'] == scaling and log['match_rms_adam'] == matched for log in selected)
+    assert len(selected) == (1 if final else 4)
     assert all(log['selection'] == 'last' and log['selected_iteration'] == 1 and
-               log['max_relative_rms'] is None and log['preservation_weight'] == 0 for log in selected)
-    assert len(torch.load(output / f'{stem}_cls_targets.pt', weights_only=True)) == 4
+               log['max_relative_rms'] is None for log in selected)
+    references = torch.load(output / f'{stem}_cls_targets.pt', weights_only=True)
+    assert len(references) == (1 if final else 4)
+    if final:
+        from PIL import Image
+        from torchvision.transforms.functional import pil_to_tensor
+        # The final image that was scored during optimization is exactly what was saved.
+        with Image.open(output / edited['image']) as a, Image.open(output / f'{stem}_iteration1_final.png') as b:
+            assert a.tobytes() == b.tobytes()
+        assert 'final_png_target_loss' in details and 'evaluated_to_png_cls_l2' in details
+        if paired:
+            assert entries[1]['mode'] == 'target_prompt_only'
+            assert edited['generation_prompt'] == 'target prompt' and zero['generation_prompt'] == 'test prompt'
+            # The preservation/CLS reference is the SOURCE face, not the new prompt's initializer.
+            with Image.open(output / entries[0]['image']) as image:
+                reference_rgb = pil_to_tensor(image).unsqueeze(0).float() / 255
+            with torch.no_grad():
+                source = dino.cls_from_rgb(reference_rgb)
+            torch.testing.assert_close(references[0]['source_cls'][0], source, atol=0, rtol=0)
     if config['cls_optimization'].get('block_mode') == 'joint':
         assert details['block_mode'] == edited['block_mode'] == 'joint'
         assert details['blocks'] == edited['blocks'] == [0, 1]

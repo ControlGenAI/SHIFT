@@ -38,7 +38,7 @@ def image_output(block, replacement=None, capture=None):
 
 
 @contextmanager
-def joint_image_outputs(blocks, corrections, scales, track_preservation=False):
+def joint_image_outputs(blocks, corrections, scales, track_preservation=False, reference_scales=None):
     """Add residuals to LIVE outputs; keep hooks installed through backward.
 
     Replacing every output with a cached baseline would sever the gradient to
@@ -46,6 +46,7 @@ def joint_image_outputs(blocks, corrections, scales, track_preservation=False):
     as the forward, while diagnostics are recorded only on the initial pass.
     """
     stats = {}
+    reference_scales = scales if reference_scales is None else reference_scales
     with ExitStack() as stack:
         for index, block in blocks.items():
             def hook(module, inputs, output, index=index):
@@ -59,7 +60,7 @@ def joint_image_outputs(blocks, corrections, scales, track_preservation=False):
                 if index not in stats or track_preservation:
                     # No extra autograd branch when the penalty is disabled.
                     with torch.set_grad_enabled(torch.is_grad_enabled() and track_preservation):
-                        applied = (modified.float() - image.float()) / scale
+                        applied = (modified.float() - image.float()) / reference_scales[index]
                         squared_rms = applied.square().mean((1, 2))
                     if index not in stats:
                         stats[index] = dict(preservation=squared_rms.mean(),
@@ -76,7 +77,12 @@ class CLSActivationGuidance:
     def __init__(self, dino, direction, block, steps=(0,), alpha=1., iterations=20,
                  learning_rate=.01, preservation_weight=1., max_relative_rms=.05,
                  resolution=(512, 512), optimization_space='activation', selection='best',
-                 prediction_callback=None, block_mode='independent'):
+                 prediction_callback=None, block_mode='independent',
+                 correction_scaling='rms', match_rms_adam=False):
+        if correction_scaling not in ('rms', 'none'):
+            raise ValueError('correction_scaling must be rms or none')
+        if type(match_rms_adam) is not bool or (match_rms_adam and correction_scaling != 'none'):
+            raise ValueError('match_rms_adam must be boolean and requires correction_scaling=none')
         if block_mode not in ('independent', 'joint'):
             raise ValueError('block_mode must be independent or joint')
         if block_mode == 'joint':
@@ -118,7 +124,31 @@ class CLSActivationGuidance:
         self.preservation_weight, self.cap = preservation_weight, max_relative_rms
         self.resolution, self.space = resolution, optimization_space
         self.selection, self.prediction_callback = selection, prediction_callback
+        self.correction_scaling, self.match_rms_adam = correction_scaling, match_rms_adam
         self.logs, self.references = [], []
+
+    def correction_scales(self, reference_scales):
+        return {i: s if self.correction_scaling == 'rms' else torch.ones_like(s)
+                for i, s in reference_scales.items()}
+
+    def correction_optimizer(self, corrections, reference_scales, scales):
+        """Optional coordinate-change control: delta=s*u, lr_delta=s*lr, eps_delta=eps/s.
+
+        Plain `none` uses ordinary Adam in the tensor's original units. Matching
+        is explicit and limited to batch 1 because Adam groups have scalar LR.
+        """
+        groups, metadata = [], []
+        for i, u in corrections.items():
+            reference = reference_scales[i]
+            if self.match_rms_adam and reference.numel() != 1:
+                raise ValueError('match_rms_adam requires batch size 1; run samples separately')
+            factor = float(reference) if self.match_rms_adam else 1.
+            lr, eps = self.lr * factor, 1e-8 / factor
+            groups.append(dict(params=[u], lr=lr, eps=eps))
+            metadata.append(dict(block=i if self.space == 'activation' else None,
+                reference_rms=reference.flatten().cpu().tolist(),
+                correction_scale=scales[i].flatten().cpu().tolist(), learning_rate=lr, epsilon=eps))
+        return torch.optim.Adam(groups, lr=self.lr), metadata
 
     def active(self, step):
         return step in self.steps
@@ -160,7 +190,8 @@ class CLSActivationGuidance:
         if self.alpha == 0:
             with torch.no_grad():
                 velocity = pipe.transformer(**kwargs)[0]
-            self.logs.append(dict(step=step, alpha=0., bypass=True))
+            self.logs.append(dict(step=step, alpha=0., bypass=True,
+                correction_scaling=self.correction_scaling, match_rms_adam=self.match_rms_adam))
             return velocity
         first = self.blocks[0]
         if self.space == 'activation':
@@ -175,8 +206,9 @@ class CLSActivationGuidance:
             with torch.no_grad():
                 baseline_velocity = pipe.transformer(**kwargs)[0].detach()
             originals = {first: baseline_velocity}
-        scales = {i: h.float().square().mean((1, 2), keepdim=True).sqrt().clamp_min(1e-6)
-                  for i, h in originals.items()}
+        reference_scales = {i: h.float().square().mean((1, 2), keepdim=True).sqrt().clamp_min(1e-6)
+                            for i, h in originals.items()}
+        scales = self.correction_scales(reference_scales)
         layouts = {i: (h.shape, h.device) for i, h in originals.items()}
         model_dtype = originals[first].dtype
         if not self.joint:
@@ -208,7 +240,8 @@ class CLSActivationGuidance:
             with ExitStack() as stack:
                 if self.joint:
                     stats = stack.enter_context(joint_image_outputs(
-                        blocks, corrections, scales, self.preservation_weight != 0))
+                        blocks, corrections, scales, self.preservation_weight != 0,
+                        reference_scales=reference_scales))
                     velocity = pipe.transformer(**kwargs)[0]
                     if stats.keys() != blocks.keys():
                         raise RuntimeError('Not all selected double blocks were called')
@@ -224,9 +257,9 @@ class CLSActivationGuidance:
                             velocity = pipe.transformer(**kwargs)[0]
                     else:
                         velocity = modified
-                    applied = (modified.float() - base) / scale
+                    applied = (modified.float() - base) / reference_scales[first]
                     preserve = applied.square().mean()
-                    actual_rms = relative_rms(modified.float() - base, scale)
+                    actual_rms = relative_rms(modified.float() - base, reference_scales[first])
                     block_rms = {first: actual_rms}
                 cls = self.cls_of_velocity(pipe, latents, velocity, sigma)
                 semantic = .5 * (cls - target).square().sum(-1).mean()
@@ -236,7 +269,7 @@ class CLSActivationGuidance:
         with torch.enable_grad():
             corrections = {i: torch.zeros(shape, device=device, dtype=torch.float32, requires_grad=True)
                            for i, (shape, device) in layouts.items()}
-            optimizer = torch.optim.Adam(list(corrections.values()), lr=self.lr)
+            optimizer, optimizer_groups = self.correction_optimizer(corrections, reference_scales, scales)
             # Evaluate iterations 0..N; the final updated state is also assessed.
             for iteration in range(self.iterations + 1):
                 with objective(corrections) as result:
@@ -253,7 +286,8 @@ class CLSActivationGuidance:
                         selected_velocity, selected_cls = velocity.detach().clone(), cls.detach().clone()
                         selected_rms = actual_rms.detach().cpu().tolist()
                         selected_block_rms = {i: rms.detach().cpu().tolist() for i, rms in block_rms.items()}
-                    fp32_rms = {i: u.detach().square().mean((1, 2)).sqrt() for i, u in corrections.items()}
+                    fp32_rms = {i: u.detach().square().mean((1, 2)).sqrt() *
+                                (scales[i] / reference_scales[i]).flatten() for i, u in corrections.items()}
                     entry = dict(step=step, iteration=iteration,
                                       semantic_loss=float(semantic.detach()), total_loss=value,
                                       preservation_loss=float(preserve.detach()), feasible=feasible,
@@ -263,7 +297,13 @@ class CLSActivationGuidance:
                                           velocity_scale).cpu().tolist())
                     if self.joint:
                         entry['per_block'] = [dict(block=i, actual_relative_rms=block_rms[i].cpu().tolist(),
-                            fp32_relative_rms=fp32_rms[i].cpu().tolist()) for i in self.blocks]
+                            fp32_relative_rms=fp32_rms[i].cpu().tolist(),
+                            actual_absolute_rms=(block_rms[i] * reference_scales[i].flatten()).cpu().tolist(),
+                            fp32_absolute_rms=(fp32_rms[i] * reference_scales[i].flatten()).cpu().tolist())
+                            for i in self.blocks]
+                    else:
+                        entry['actual_absolute_rms'] = (actual_rms * reference_scales[first].flatten()).detach().cpu().tolist()
+                        entry['fp32_absolute_rms'] = (fp32_rms[first] * reference_scales[first].flatten()).cpu().tolist()
                     self.logs.append(entry)
                     if iteration < self.iterations:
                         optimizer.zero_grad(set_to_none=True)
@@ -283,11 +323,11 @@ class CLSActivationGuidance:
                 if iteration < self.iterations:
                     optimizer.step()
                     with torch.no_grad():
-                        for index, u in enumerate(corrections.values()):
+                        for index, (i, u) in enumerate(corrections.items()):
                             if not torch.isfinite(u).all():
                                 raise RuntimeError('Nonfinite Adam correction')
                             if self.cap is not None:
-                                norm = u.square().mean(dim=(1, 2), keepdim=True).sqrt()
+                                norm = u.square().mean(dim=(1, 2), keepdim=True).sqrt() * (scales[i] / reference_scales[i])
                                 projected = bool((norm > self.cap * .99).any())
                                 entry['projected'] |= projected
                                 if self.joint:
@@ -301,6 +341,8 @@ class CLSActivationGuidance:
                               selection=self.selection, max_relative_rms=self.cap,
                               preservation_weight=self.preservation_weight,
                               learning_rate=self.lr, iterations=self.iterations,
+                              correction_scaling=self.correction_scaling, match_rms_adam=self.match_rms_adam,
+                              optimizer_groups=optimizer_groups,
                               sigma=float(sigma), model_tensor_dtype=str(model_dtype),
                               correction_dtype='torch.float32',
                               selected_relative_rms=selected_rms,

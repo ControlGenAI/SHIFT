@@ -848,6 +848,10 @@ class FluxPipeline(
         do_true_cfg = true_cfg_scale > 1 and has_neg_prompt
         if activation_guidance is not None and do_true_cfg:
             raise ValueError("Activation CLS guidance currently supports conditional FLUX only")
+        if getattr(activation_guidance, "requires_static_conditioning", False) and (
+            txt_steering.get("vector") is not None or txt_steering.get("vectors") or args.get("structure_strength", 0.) != 0.
+        ):
+            raise ValueError("Final-image CLS optimization requires static conditioning without other SHIFT steering")
         (
             prompt_embeds,
             pooled_prompt_embeds,

@@ -25,9 +25,9 @@
   "training": {
     "epochs": 20,
     "token_batch": 256,
-    "learning_rate": 0.0001,
+    "learning_rate": 0.0003,
     "hidden": 256,
-    "layers": 4,
+    "layers": 8,
     "scale_bound": 1.5,
     "permute": false,
     "seed": 42

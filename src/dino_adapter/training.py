@@ -109,6 +109,9 @@ def train(config, dataset, output, device):
         _, train_target_var = target_statistics(cached_train)
         _, val_target_var = target_statistics(cached_val)
         optimizer = torch.optim.Adam(adapter.parameters(), lr=settings['learning_rate'])
+        steps_per_epoch = sum(-(-len(h) // settings['token_batch']) for h, _ in cached_train)
+        schedule = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, settings['epochs'] * steps_per_epoch)
         history, best = [], float('inf')
         baseline = validation(adapter, cached_val, settings['token_batch'], device, val_target_var)
         print(f'block={block} init val={baseline} (train target var={train_target_var:.3e})', flush=True)
@@ -129,6 +132,7 @@ def train(config, dataset, output, device):
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(adapter.parameters(), 1., error_if_nonfinite=True)
                     optimizer.step()
+                    schedule.step()
                     train_sum += float(loss.detach()) * len(subset)
                     count += len(subset)
             metrics = validation(adapter, cached_val, settings['token_batch'], device, val_target_var)

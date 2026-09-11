@@ -1,17 +1,22 @@
 """One dual-stream post-block image hook, gated by diffusion step.
 
 Compatible with SHIFT's FluxPipeline callback_on_step_end. No text steering.
+The block returns (encoder_hidden_states, hidden_states); only the second one,
+the image tokens, is ever read or replaced.
 """
 import torch
 
 
 class ImageBlockHook:
-    def __init__(self, transformer, block, step, edit=None):
+    def __init__(self, transformer, block, step, edit=None, capture=True, expected_tokens=None):
         if block < 0 or block >= len(transformer.transformer_blocks) or step < 0:
             raise ValueError('Invalid dual-stream block or step')
         self.block = transformer.transformer_blocks[block]
+        self.block_index = block
         self.target_step = step
         self.edit = edit
+        self.capture = capture
+        self.expected_tokens = expected_tokens
         self.step = 0
         self.hits = 0
         self.captured = None
@@ -32,8 +37,15 @@ class ImageBlockHook:
         txt, img = output
         if img.ndim != 3:
             raise ValueError('Expected all image tokens [B,N,C]')
+        if txt.ndim != 3:
+            raise ValueError('Expected a text stream [B,S,C] alongside the image tokens')
+        # The block returns (text, image); a swap would silently steer the prompt.
+        if self.expected_tokens is not None and img.shape[1] != self.expected_tokens:
+            raise ValueError(f'Expected {self.expected_tokens} image tokens, got {img.shape[1]}; '
+                             'dual-stream output order or spatial grid is not what the config assumes')
         self.hits += 1
-        self.captured = img.detach().cpu().clone()
+        if self.capture:
+            self.captured = img.detach().to('cpu', copy=True)
         if self.edit is None:
             return output
         changed = self.edit(img)
@@ -46,6 +58,8 @@ class ImageBlockHook:
         return callback_kwargs
 
     def __exit__(self, exc_type, exc, tb):
-        self.handle.remove()
+        if self.handle is not None:
+            self.handle.remove()
+            self.handle = None
         if exc_type is None and self.hits != 1:
             raise RuntimeError(f'Expected one intervention/capture, observed {self.hits}')

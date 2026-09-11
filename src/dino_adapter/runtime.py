@@ -15,6 +15,16 @@ def read_config(path):
     alphas = config.get('alphas', [])
     if not alphas or any(not math.isfinite(a) for a in alphas) or 0.0 not in alphas:
         raise ValueError('alphas must be finite and include 0 for the inverse control')
+    if len(set(alphas)) != len(alphas):
+        raise ValueError('alphas must be distinct')
+    roi = config.get('roi')
+    if (not isinstance(roi, list) or len(roi) != 4
+            or not 0 <= roi[0] < roi[2] <= 1 or not 0 <= roi[1] < roi[3] <= 1):
+        raise ValueError('roi must be [left, top, right, bottom] inside [0,1]')
+    if roi == [0.0, 0.0, 1.0, 1.0]:
+        raise ValueError('A full-frame ROI leaves no outside region to measure')
+    if config['blocks'] != 'all' and not isinstance(config['blocks'], list):
+        raise ValueError('blocks must be "all" or a list of indices')
     return config
 
 

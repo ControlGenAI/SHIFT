@@ -65,3 +65,5 @@ visualizations.ipynb
 
 
 *.pt
+# Experiment artifacts (datasets, checkpoints, generations, logs)
+out/

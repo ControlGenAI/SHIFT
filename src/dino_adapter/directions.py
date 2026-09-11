@@ -25,27 +25,43 @@ def build_directions(config, dataset, output):
     for sample in data['samples']:
         if sample['split'] == 'train':
             pairs.setdefault(sample['pair_id'], {})[sample['label']] = sample
+    if not pairs:
+        raise ValueError('No train pairs to build a direction from')
     blocks = data['blocks'] if config['blocks'] == 'all' else config['blocks']
     if not blocks or any(b not in data['blocks'] for b in blocks):
         raise ValueError('Missing requested block')
-    vectors = {}
-    for block in blocks:
-        delta_h, delta_z = None, None
-        for pair in pairs.values():
-            hp, yp = sample_tensors(dataset, pair[1], block)
-            hn, yn = sample_tensors(dataset, pair[0], block)
-            dh, dz = hp - hn, yp - yn
-            delta_h = dh if delta_h is None else delta_h + dh
-            delta_z = dz if delta_z is None else delta_z + dz
-        delta_h, delta_z = delta_h / len(pairs), delta_z / len(pairs)
-        delta_h[~mask], delta_z[~mask] = 0, 0
-        if delta_h.norm() < 1e-8 or delta_z.norm() < 1e-8:
-            raise ValueError('Degenerate paired direction; check prompts/data')
-        # Keep mean-difference units: alpha=1 removes one average DINO displacement.
-        vectors[str(block)] = dict(z=delta_z, h=delta_h)
     path = Path(output)
     if path.exists():
         raise FileExistsError(path)
+
+    # The DINO direction comes from the final images, so it does not depend on
+    # the block; only the activation direction does.
+    delta_z = None
+    for pair in pairs.values():
+        _, yp = sample_tensors(dataset, pair[1], blocks[0])
+        _, yn = sample_tensors(dataset, pair[0], blocks[0])
+        delta_z = (yp - yn) if delta_z is None else delta_z + (yp - yn)
+    delta_z = delta_z / len(pairs)
+    delta_z[~mask] = 0
+    if delta_z.norm() < 1e-8:
+        raise ValueError('Degenerate paired DINO direction; check prompts/data')
+
+    vectors = {}
+    for block in blocks:
+        delta_h = None
+        for pair in pairs.values():
+            hp, _ = sample_tensors(dataset, pair[1], block)
+            hn, _ = sample_tensors(dataset, pair[0], block)
+            delta_h = (hp - hn) if delta_h is None else delta_h + (hp - hn)
+        delta_h = delta_h / len(pairs)
+        delta_h[~mask] = 0
+        if delta_h.norm() < 1e-8:
+            raise ValueError(f'Degenerate paired activation direction for block {block}')
+        # Keep mean-difference units: alpha=1 removes one average DINO displacement.
+        vectors[str(block)] = dict(z=delta_z.clone(), h=delta_h)
+        print(f'block={block} |delta_h|={float(delta_h.norm()):.4g} '
+              f'rms={float(delta_h.square().mean().sqrt()):.4g}', flush=True)
+    print(f'|delta_z|={float(delta_z.norm()):.4g} over {len(pairs)} train pairs', flush=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(dict(version=1, config=config, grid=data['grid'], mask=mask,
                     train_pair_ids=sorted(pairs), vectors=vectors), path)

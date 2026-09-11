@@ -11,6 +11,8 @@ def main():
     collect.add_argument('--pairs', required=True)
     collect.add_argument('--output', required=True)
     collect.add_argument('--device', default='cuda:0')
+    collect.add_argument('--resume', action='store_true',
+                         help='Continue an interrupted collection from collection_progress.json')
     train = sub.add_parser('train', help='Train per-block adapters from saved dataset only')
     train.add_argument('--dataset', required=True)
     train.add_argument('--output', required=True)
@@ -25,6 +27,7 @@ def main():
     steer.add_argument('--output', required=True)
     steer.add_argument('--device', default='cuda:0')
     steer.add_argument('--split', choices=['val', 'test'], default='test')
+    steer.add_argument('--resume', action='store_true', help='Reuse generations already on disk')
     evaluate = sub.add_parser('evaluate', help='Score saved outputs with DINO and pixel-change proxies')
     evaluate.add_argument('--directions', required=True)
     evaluate.add_argument('--results', required=True)
@@ -33,7 +36,7 @@ def main():
     config = read_config(args.config)
     if args.command == 'collect':
         from .data import collect
-        collect(config, args.pairs, args.output, args.device)
+        collect(config, args.pairs, args.output, args.device, args.resume)
     elif args.command == 'train':
         from .training import train
         train(config, args.dataset, args.output, args.device)
@@ -42,7 +45,8 @@ def main():
         build_directions(config, args.dataset, args.output)
     elif args.command == 'steer':
         from .steering import steer
-        steer(config, args.dataset, args.adapters, args.directions, args.output, args.device, args.split)
+        steer(config, args.dataset, args.adapters, args.directions, args.output, args.device,
+              args.split, args.resume)
     elif args.command == 'evaluate':
         from .steering import evaluate
         evaluate(config, args.directions, args.results, args.device)

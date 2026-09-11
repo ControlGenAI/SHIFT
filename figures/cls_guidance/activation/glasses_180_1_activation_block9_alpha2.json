@@ -1,0 +1,285 @@
+{
+  "sample": {
+    "id": "glasses_180_1",
+    "pair_id": "glasses_180",
+    "label": 1,
+    "split": "test",
+    "seed": 500180,
+    "prompt": "A bright daylight front-facing centered head-and-shoulders portrait photograph of a young man with loose curly black hair, neutral expression, looking straight at the camera, plain grey background, wearing thin gold round eyeglasses",
+    "image": "glasses_180_1/image.png",
+    "blocks": {
+      "0": "glasses_180_1/block_0.pt",
+      "1": "glasses_180_1/block_1.pt",
+      "2": "glasses_180_1/block_2.pt",
+      "3": "glasses_180_1/block_3.pt",
+      "4": "glasses_180_1/block_4.pt",
+      "5": "glasses_180_1/block_5.pt",
+      "6": "glasses_180_1/block_6.pt",
+      "7": "glasses_180_1/block_7.pt",
+      "8": "glasses_180_1/block_8.pt",
+      "9": "glasses_180_1/block_9.pt",
+      "10": "glasses_180_1/block_10.pt",
+      "11": "glasses_180_1/block_11.pt",
+      "12": "glasses_180_1/block_12.pt",
+      "13": "glasses_180_1/block_13.pt",
+      "14": "glasses_180_1/block_14.pt",
+      "15": "glasses_180_1/block_15.pt",
+      "16": "glasses_180_1/block_16.pt",
+      "17": "glasses_180_1/block_17.pt",
+      "18": "glasses_180_1/block_18.pt"
+    },
+    "features": "glasses_180_1/features.pt"
+  },
+  "block": 9,
+  "alpha": 1.0,
+  "space": "activation",
+  "logs": [
+    {
+      "step": 0,
+      "iteration": 0,
+      "semantic_loss": 0.10251083970069885,
+      "total_loss": 0.10251083970069885,
+      "preservation_loss": 0.0,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 1,
+      "semantic_loss": 0.13448184728622437,
+      "total_loss": 0.13458161056041718,
+      "preservation_loss": 9.975994180422276e-05,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.009987989440560341
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 2,
+      "semantic_loss": 0.12102207541465759,
+      "total_loss": 0.12125395983457565,
+      "preservation_loss": 0.00023188095656223595,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.015227638185024261
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 3,
+      "semantic_loss": 0.11699941754341125,
+      "total_loss": 0.11738406121730804,
+      "preservation_loss": 0.000384642364224419,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.019612301141023636
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 4,
+      "semantic_loss": 0.09872356802225113,
+      "total_loss": 0.09926749765872955,
+      "preservation_loss": 0.0005439314991235733,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.023322338238358498
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 5,
+      "semantic_loss": 0.11475899815559387,
+      "total_loss": 0.11547296494245529,
+      "preservation_loss": 0.0007139657973311841,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.026720136404037476
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 6,
+      "semantic_loss": 0.10272178053855896,
+      "total_loss": 0.10359641909599304,
+      "preservation_loss": 0.000874641293194145,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.029574334621429443
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 7,
+      "semantic_loss": 0.09981270879507065,
+      "total_loss": 0.10084573179483414,
+      "preservation_loss": 0.0010330218356102705,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03214065730571747
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 8,
+      "semantic_loss": 0.12828172743320465,
+      "total_loss": 0.1294795572757721,
+      "preservation_loss": 0.00119782704859972,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03460963815450668
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 9,
+      "semantic_loss": 0.11367969214916229,
+      "total_loss": 0.11503530293703079,
+      "preservation_loss": 0.0013556124176830053,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.03681863844394684
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 10,
+      "semantic_loss": 0.10999400913715363,
+      "total_loss": 0.11150610446929932,
+      "preservation_loss": 0.0015120981261134148,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.038885705173015594
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 11,
+      "semantic_loss": 0.10042569041252136,
+      "total_loss": 0.10209093987941742,
+      "preservation_loss": 0.0016652470221742988,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.040807440876960754
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 12,
+      "semantic_loss": 0.09612146764993668,
+      "total_loss": 0.09794006496667862,
+      "preservation_loss": 0.0018185940571129322,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04264497756958008
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 13,
+      "semantic_loss": 0.09249583631753922,
+      "total_loss": 0.09446451812982559,
+      "preservation_loss": 0.0019686813466250896,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04436982423067093
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 14,
+      "semantic_loss": 0.09434020519256592,
+      "total_loss": 0.09645380824804306,
+      "preservation_loss": 0.0021136030554771423,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04597393795847893
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 15,
+      "semantic_loss": 0.09058542549610138,
+      "total_loss": 0.09284096211194992,
+      "preservation_loss": 0.0022555342875421047,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04749246686697006
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 16,
+      "semantic_loss": 0.08356783539056778,
+      "total_loss": 0.08596055209636688,
+      "preservation_loss": 0.002392716472968459,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.048915401101112366
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 17,
+      "semantic_loss": 0.0774245634675026,
+      "total_loss": 0.0798768699169159,
+      "preservation_loss": 0.002452306915074587,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04952077195048332
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 18,
+      "semantic_loss": 0.07417775690555573,
+      "total_loss": 0.0766301304101944,
+      "preservation_loss": 0.002452373970299959,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.049521446228027344
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 19,
+      "semantic_loss": 0.07041090726852417,
+      "total_loss": 0.0728631243109703,
+      "preservation_loss": 0.002452216576784849,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0495198592543602
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 20,
+      "semantic_loss": 0.06890863925218582,
+      "total_loss": 0.07136084884405136,
+      "preservation_loss": 0.002452206565067172,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.04951975867152214
+      ]
+    },
+    {
+      "step": 0,
+      "selected_iteration": 20,
+      "baseline_semantic_loss": 0.10251083970069885,
+      "selected_total_loss": 0.07136084884405136,
+      "selected_relative_rms": [
+        0.04951975867152214
+      ],
+      "final_semantic_loss": 0.06890863925218582,
+      "velocity_relative_rms": [
+        0.8222143650054932
+      ]
+    }
+  ],
+  "final_cls_removal_proxy": 0.20819054543972015,
+  "baseline_pixel_mae": 56.7595100402832,
+  "baseline_pixel_max_abs": 252.0
+}

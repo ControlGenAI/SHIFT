@@ -1,0 +1,37 @@
+[
+  {
+    "sample_id": "glasses_180_1",
+    "mode": "baseline",
+    "image": "glasses_180_1_baseline.png"
+  },
+  {
+    "sample_id": "glasses_180_1",
+    "mode": "velocity",
+    "block": null,
+    "alpha": 0.0,
+    "image": "glasses_180_1_velocity_block0_alpha0.png",
+    "final_cls_removal_proxy": 0.0,
+    "baseline_pixel_mae": 0.0,
+    "baseline_pixel_max_abs": 0.0
+  },
+  {
+    "sample_id": "glasses_180_1",
+    "mode": "velocity",
+    "block": null,
+    "alpha": 0.5,
+    "image": "glasses_180_1_velocity_block0_alpha1.png",
+    "final_cls_removal_proxy": -0.0004419931210577488,
+    "baseline_pixel_mae": 1.2173856496810913,
+    "baseline_pixel_max_abs": 158.0
+  },
+  {
+    "sample_id": "glasses_180_1",
+    "mode": "velocity",
+    "block": null,
+    "alpha": 1.0,
+    "image": "glasses_180_1_velocity_block0_alpha2.png",
+    "final_cls_removal_proxy": -0.003755442565307021,
+    "baseline_pixel_mae": 1.2796897888183594,
+    "baseline_pixel_max_abs": 97.0
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "n_images": 400,
+  "n_train_pairs": 160,
+  "direction_norm": 0.45806267857551575,
+  "paired_delta_norm_mean": 0.6414755582809448,
+  "cached_cls": true,
+  "cls_signature": {
+    "model": "facebook/dinov2-large",
+    "revision": "47b73eefe95e8d44ec3623f8890bd894b6ea2d6c",
+    "size": 448,
+    "preprocessing": "full_frame_bicubic_square_imagenet"
+  }
+}

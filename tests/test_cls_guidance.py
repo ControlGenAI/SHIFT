@@ -204,3 +204,72 @@ def test_guidance_rejects_transformer_cache_before_forward():
     guide = CLSActivationGuidance(Dino(), torch.tensor([.1, -.1, 0.]), 0)
     with pytest.raises(ValueError, match='caching'):
         guide.predict(pipe, 0, None, torch.ones(1, 4, 3), {})
+
+
+def test_unbounded_last_matches_adam_even_when_the_last_update_is_worse():
+    transformer = Transformer().eval()
+    latents = torch.ones(1, 4, 3)
+    pipe = SimpleNamespace(transformer=transformer, vae=VAE(), vae_scale_factor=1,
+        scheduler=SimpleNamespace(sigmas=torch.tensor([.75, 0.])),
+        _unpack_latents=lambda x, *args: x.transpose(1, 2).reshape(1, 3, 2, 2))
+    direction = torch.tensor([.1, -.1, 0.])
+    # Deliberately overshoot: this distinguishes "last" from silently keeping baseline.
+    guide = CLSActivationGuidance(Dino(), direction, 0, iterations=1, learning_rate=2.,
+        preservation_weight=0., max_relative_rms=None, selection='last',
+        resolution=(2, 2), optimization_space='velocity')
+    with torch.no_grad():
+        baseline = transformer(hidden_states=latents)[0]
+        scale = baseline.square().mean().sqrt()
+        source = guide.cls_of_velocity(pipe, latents, baseline, torch.tensor(.75))
+        target = F.normalize(source - direction, dim=-1)
+    # Ordinary unconstrained Adam, without projection, penalty or best-candidate selection.
+    u = torch.zeros_like(baseline, requires_grad=True)
+    optimizer = torch.optim.Adam([u], lr=2.)
+    loss = .5 * (guide.cls_of_velocity(pipe, latents, baseline + scale * u,
+                                     torch.tensor(.75)) - target).square().sum(-1).mean()
+    loss.backward()
+    optimizer.step()
+    expected = (baseline + scale * u).detach()
+    with torch.no_grad():
+        actual = guide.predict(pipe, 0, None, latents, dict(hidden_states=latents))
+    torch.testing.assert_close(actual, expected, atol=0, rtol=0)
+    selected = guide.logs[-1]
+    assert selected['selected_iteration'] == 1 and selected['selection'] == 'last'
+    assert selected['selected_relative_rms'][0] > .05
+    assert selected['final_semantic_loss'] > selected['baseline_semantic_loss']
+    assert selected['selected_total_loss'] == selected['final_semantic_loss']
+    assert guide.logs[0]['gradient_nonzero'] and guide.logs[0]['gradient_rms'] > 0
+    assert not guide.logs[0]['projected']
+
+
+def test_last_selection_still_respects_an_explicit_cap_after_rounding():
+    import pytest
+    class Identity(torch.nn.Module):
+        def forward(self, hidden_states):
+            return (hidden_states,)
+    latents = torch.ones(1, 4, 3, dtype=torch.bfloat16)
+    pipe = SimpleNamespace(transformer=Identity().eval(), vae=VAE(), vae_scale_factor=1,
+        scheduler=SimpleNamespace(sigmas=torch.tensor([.75, 0.])),
+        _unpack_latents=lambda x, *args: x.transpose(1, 2).reshape(1, 3, 2, 2))
+    guide = CLSActivationGuidance(Dino(), torch.tensor([.1, -.1, 0.]), 0,
+        iterations=1, preservation_weight=0., max_relative_rms=.002, selection='last',
+        resolution=(2, 2), optimization_space='velocity')
+    with pytest.raises(RuntimeError, match='Last iteration exceeds'):
+        guide.predict(pipe, 0, None, latents, dict(hidden_states=latents))
+
+
+def test_fp32_correction_accumulates_updates_smaller_than_bf16_spacing():
+    class Identity(torch.nn.Module):
+        def forward(self, hidden_states):
+            return (hidden_states,)
+    latents = torch.ones(1, 4, 3, dtype=torch.bfloat16)
+    pipe = SimpleNamespace(transformer=Identity().eval(), vae=VAE(), vae_scale_factor=1,
+        scheduler=SimpleNamespace(sigmas=torch.tensor([.75, 0.])),
+        _unpack_latents=lambda x, *args: x.transpose(1, 2).reshape(1, 3, 2, 2))
+    guide = CLSActivationGuidance(Dino(), torch.tensor([.1, -.1, 0.]), 0,
+        iterations=40, learning_rate=.0001, preservation_weight=0., max_relative_rms=None,
+        selection='last', resolution=(2, 2), optimization_space='velocity')
+    guide.predict(pipe, 0, None, latents, dict(hidden_states=latents))
+    assert guide.logs[1]['fp32_relative_rms'][0] > 0
+    assert guide.logs[1]['actual_relative_rms'][0] == 0
+    assert guide.logs[-1]['selected_relative_rms'][0] > 0

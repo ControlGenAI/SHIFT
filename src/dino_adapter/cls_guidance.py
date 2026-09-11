@@ -40,7 +40,8 @@ def image_output(block, replacement=None, capture=None):
 class CLSActivationGuidance:
     def __init__(self, dino, direction, block, steps=(0,), alpha=1., iterations=20,
                  learning_rate=.01, preservation_weight=1., max_relative_rms=.05,
-                 resolution=(512, 512), optimization_space='activation'):
+                 resolution=(512, 512), optimization_space='activation', selection='best',
+                 prediction_callback=None):
         if (type(block) is not int or type(iterations) is not int or
                 not isinstance(steps, (list, tuple)) or any(type(s) is not int for s in steps)):
             raise ValueError('Block, steps and iterations must be integer indices/counts')
@@ -48,10 +49,16 @@ class CLSActivationGuidance:
                 any(type(s) is not int or s <= 0 for s in resolution)):
             raise ValueError('Resolution must be positive integer (height, width)')
         if (iterations < 1 or learning_rate <= 0 or preservation_weight < 0 or
-                max_relative_rms <= 0 or block < 0 or not steps or min(steps) < 0 or
+                block < 0 or not steps or min(steps) < 0 or
                 len(set(steps)) != len(steps) or
-                not all(math.isfinite(x) for x in (alpha, learning_rate, preservation_weight, max_relative_rms))):
+                not all(math.isfinite(x) for x in (alpha, learning_rate, preservation_weight))):
             raise ValueError('Invalid CLS guidance settings')
+        if max_relative_rms is not None and (not math.isfinite(max_relative_rms) or max_relative_rms <= 0):
+            raise ValueError('max_relative_rms must be null or a finite positive number')
+        if selection not in ('best', 'last'):
+            raise ValueError('selection must be best or last')
+        if prediction_callback is not None and not callable(prediction_callback):
+            raise ValueError('prediction_callback must be callable')
         if optimization_space not in ('activation', 'velocity'):
             raise ValueError('optimization_space must be activation or velocity')
         if direction.ndim != 1 or not torch.isfinite(direction).all() or direction.norm() <= 1e-8:
@@ -61,6 +68,7 @@ class CLSActivationGuidance:
         self.iterations, self.lr = iterations, learning_rate
         self.preservation_weight, self.cap = preservation_weight, max_relative_rms
         self.resolution, self.space = resolution, optimization_space
+        self.selection, self.prediction_callback = selection, prediction_callback
         self.logs, self.references = [], []
 
     def active(self, step):
@@ -72,13 +80,16 @@ class CLSActivationGuidance:
         if max(self.steps) >= num_steps:
             raise ValueError('CLS guidance step is outside the actual denoising schedule')
 
-    def cls_of_velocity(self, pipe, latents, velocity, sigma):
+    def decode_velocity(self, pipe, latents, velocity, sigma):
         # Keep clean estimate subtraction in FP32 before casting for the VAE.
         clean = latents.float() - sigma.float() * velocity.float()
         height, width = self.resolution
         unpacked = pipe._unpack_latents(clean, height, width, pipe.vae_scale_factor)
         unpacked = unpacked / pipe.vae.config.scaling_factor + pipe.vae.config.shift_factor
-        decoded = pipe.vae.decode(unpacked.to(pipe.vae.dtype), return_dict=False)[0]
+        return pipe.vae.decode(unpacked.to(pipe.vae.dtype), return_dict=False)[0]
+
+    def cls_of_velocity(self, pipe, latents, velocity, sigma):
+        decoded = self.decode_velocity(pipe, latents, velocity, sigma)
         return self.dino.cls_from_rgb(decoded.float() / 2 + .5)
 
     def predict(self, pipe, step, timestep, latents, kwargs):
@@ -114,6 +125,7 @@ class CLSActivationGuidance:
             original = baseline_velocity
         base = original.float()
         scale = base.square().mean(dim=(1, 2), keepdim=True).sqrt().clamp_min(1e-6)
+        velocity_scale = baseline_velocity.float().square().mean((1, 2), keepdim=True).sqrt().clamp_min(1e-6)
         with torch.no_grad():
             source_cls = self.cls_of_velocity(pipe, latents, baseline_velocity, sigma)
             direction = self.direction.to(source_cls.device)
@@ -124,9 +136,11 @@ class CLSActivationGuidance:
                 raise ValueError('Degenerate target CLS; reduce alpha')
             target = F.normalize(raw_target, dim=-1).detach()
             baseline_loss = float(.5 * (source_cls - target).square().sum(-1).mean())
-        best_loss, best_index = baseline_loss, 0
-        best_velocity, best_cls = baseline_velocity, source_cls
-        best_rms = [0.] * base.shape[0]
+            if self.prediction_callback is not None:
+                self.prediction_callback(step, 'before', self.decode_velocity(pipe, latents, baseline_velocity, sigma))
+        selected_loss, selected_index = baseline_loss, 0
+        selected_velocity, selected_cls = baseline_velocity, source_cls
+        selected_rms = [0.] * base.shape[0]
 
         def objective(u):
             modified = (base + scale * u).to(original.dtype)
@@ -154,38 +168,62 @@ class CLSActivationGuidance:
                 if not torch.isfinite(loss) or not torch.isfinite(velocity).all():
                     raise RuntimeError('Nonfinite CLS objective/velocity')
                 value = float(loss.detach())
-                feasible = bool((actual_rms <= self.cap).all())
-                if value < best_loss and feasible:
-                    best_loss, best_index = value, iteration
-                    best_velocity, best_cls = velocity.detach().clone(), cls.detach().clone()
-                    best_rms = actual_rms.detach().cpu().tolist()
-                self.logs.append(dict(step=step, iteration=iteration,
+                feasible = self.cap is None or bool((actual_rms <= self.cap).all())
+                # "last" takes every Adam update, even when the objective worsens.
+                # A separately requested cap must never be silently violated.
+                if self.selection == 'last' and iteration == self.iterations and not feasible:
+                    raise RuntimeError('Last iteration exceeds max_relative_rms after model-dtype rounding')
+                if ((self.selection == 'best' and value < selected_loss and feasible) or
+                        (self.selection == 'last' and iteration == self.iterations)):
+                    selected_loss, selected_index = value, iteration
+                    selected_velocity, selected_cls = velocity.detach().clone(), cls.detach().clone()
+                    selected_rms = actual_rms.detach().cpu().tolist()
+                entry = dict(step=step, iteration=iteration,
                                       semantic_loss=float(semantic.detach()), total_loss=value,
                                       preservation_loss=float(preserve.detach()), feasible=feasible,
-                                      actual_relative_rms=actual_rms.detach().cpu().tolist()))
+                                      actual_relative_rms=actual_rms.detach().cpu().tolist(),
+                                      fp32_relative_rms=u.detach().square().mean((1, 2)).sqrt().cpu().tolist(),
+                                      velocity_relative_rms=relative_rms(velocity.detach().float() - baseline_velocity.float(),
+                                          velocity_scale).cpu().tolist())
+                self.logs.append(entry)
                 if iteration < self.iterations:
                     optimizer.zero_grad(set_to_none=True)
                     gradient = torch.autograd.grad(loss, u)[0]
                     if not torch.isfinite(gradient).all():
                         raise RuntimeError('Nonfinite activation gradient')
+                    entry.update(gradient_rms=float(gradient.square().mean().sqrt()),
+                                 gradient_nonzero=bool(torch.count_nonzero(gradient)),
+                                 projected=False)
                     u.grad = gradient
                     optimizer.step()
                     with torch.no_grad():
-                        norm = u.square().mean(dim=(1, 2), keepdim=True).sqrt()
-                        # Small margin for the following BF16 rounding.
-                        u.mul_((self.cap * .99 / norm.clamp_min(1e-12)).clamp(max=1))
+                        if not torch.isfinite(u).all():
+                            raise RuntimeError('Nonfinite Adam correction')
+                        if self.cap is not None:
+                            norm = u.square().mean(dim=(1, 2), keepdim=True).sqrt()
+                            entry['projected'] = bool((norm > self.cap * .99).any())
+                            # Small margin for the following BF16 rounding.
+                            u.mul_((self.cap * .99 / norm.clamp_min(1e-12)).clamp(max=1))
                     del gradient
                 del loss, semantic, preserve, velocity, cls, actual_rms
         if getattr(pipe.scheduler, 'step_index', None) != index_before:
             raise RuntimeError('Scheduler advanced during inner optimization')
-        self.logs.append(dict(step=step, selected_iteration=best_index,
-                              baseline_semantic_loss=baseline_loss, selected_total_loss=best_loss,
-                              selected_relative_rms=best_rms,
-                              final_semantic_loss=float(.5 * (best_cls - target).square().sum(-1).mean()),
-                              velocity_relative_rms=relative_rms(best_velocity - baseline_velocity,
-                                  baseline_velocity.float().square().mean((1, 2), keepdim=True).sqrt().clamp_min(1e-6)).cpu().tolist()))
+        self.logs.append(dict(step=step, selected_iteration=selected_index,
+                              baseline_semantic_loss=baseline_loss, selected_total_loss=selected_loss,
+                              selection=self.selection, max_relative_rms=self.cap,
+                              preservation_weight=self.preservation_weight,
+                              learning_rate=self.lr, iterations=self.iterations,
+                              sigma=float(sigma), model_tensor_dtype=str(original.dtype),
+                              correction_dtype=str(base.dtype),
+                              selected_relative_rms=selected_rms,
+                              final_semantic_loss=float(.5 * (selected_cls - target).square().sum(-1).mean()),
+                              velocity_relative_rms=relative_rms(selected_velocity.float() - baseline_velocity.float(),
+                                  velocity_scale).cpu().tolist()))
+        if self.prediction_callback is not None:
+            with torch.no_grad():
+                self.prediction_callback(step, 'after', self.decode_velocity(pipe, latents, selected_velocity, sigma))
         self.references.append(dict(step=step, sigma=float(sigma), source_cls=source_cls.detach().cpu(),
-                                    target_cls=target.cpu(), selected_cls=best_cls.detach().cpu()))
+                                    target_cls=target.cpu(), selected_cls=selected_cls.detach().cpu()))
         # This is the velocity actually evaluated for the selected intervention.
         # There is no update to latents here; the outer pipeline takes exactly one step.
-        return best_velocity
+        return selected_velocity

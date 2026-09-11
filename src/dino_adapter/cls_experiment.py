@@ -134,6 +134,17 @@ def mean_from_features(features, output):
     torch.save(dict(version=1, **statistics, cls_signature=payload['cls_signature']), path)
 
 
+def guidance_options(config):
+    settings = config['cls_optimization']
+    if type(settings.get('save_step_predictions', False)) is not bool:
+        raise ValueError('save_step_predictions must be boolean')
+    return dict(steps=settings['steps'], iterations=settings['iterations'],
+                learning_rate=settings['learning_rate'], preservation_weight=settings['preservation_weight'],
+                max_relative_rms=settings['max_relative_rms'], selection=settings.get('selection', 'best'),
+                resolution=(config['height'], config['width']),
+                optimization_space=settings.get('space', 'activation'))
+
+
 def optimize(config, rows, direction_path, output, device):
     payload = torch.load(direction_path, map_location='cpu', weights_only=True)
     if cls_signature(config) != payload['cls_signature']:
@@ -152,10 +163,8 @@ def optimize(config, rows, direction_path, output, device):
     if not settings['steps'] or any(s < 0 or s >= config['inference_steps'] for s in settings['steps']):
         raise ValueError('Invalid optimization timestep')
     # Validate optimization settings without model loading.
-    CLSActivationGuidance(None, payload['direction'], 0, steps=settings['steps'], alpha=config['alphas'][0],
-        iterations=settings['iterations'], learning_rate=settings['learning_rate'],
-        preservation_weight=settings['preservation_weight'], max_relative_rms=settings['max_relative_rms'],
-        optimization_space=space)
+    options = guidance_options(config)
+    CLSActivationGuidance(None, payload['direction'], 0, alpha=config['alphas'][0], **options)
     root = Path(output)
     root.mkdir(parents=True, exist_ok=False)
     save_json(root / 'config.json', config)
@@ -177,16 +186,17 @@ def optimize(config, rows, direction_path, output, device):
         entries.append(dict(sample_id=row['id'], mode='baseline', image=f"{row['id']}_baseline.png"))
         for block in blocks:
             for index, alpha in enumerate(config['alphas']):
+                name = f"{row['id']}_{space}_block{block}_alpha{index}"
+                def save_prediction(step, stage, decoded, stem=name):
+                    preview = pipe.image_processor.postprocess(decoded.detach(), output_type='pil')[0]
+                    preview.save(root / f'{stem}_step{step}_{stage}.png')
                 guidance = CLSActivationGuidance(dino, payload['direction'], block,
-                    steps=settings['steps'], alpha=alpha, iterations=settings['iterations'],
-                    learning_rate=settings['learning_rate'], preservation_weight=settings['preservation_weight'],
-                    max_relative_rms=settings['max_relative_rms'], resolution=(config['height'], config['width']),
-                    optimization_space=space)
+                    alpha=alpha, **options,
+                    prediction_callback=save_prediction if settings.get('save_step_predictions', False) else None)
                 image = pipe(row['prompt'], width=config['width'], height=config['height'],
                     num_inference_steps=config['inference_steps'], guidance_scale=config['guidance_scale'],
                     max_sequence_length=256, generator=torch.Generator('cpu').manual_seed(row['seed']),
                     structure_strength=0., txt_steering={'vector': None}, activation_guidance=guidance).images[0]
-                name = f"{row['id']}_{space}_block{block}_alpha{index}"
                 image.save(root / f'{name}.png')
                 torch.save(guidance.references, root / f'{name}_cls_targets.pt')
                 _, final_cls = dino(image, None)

@@ -126,4 +126,7 @@ A second experiment optimizes post-block image activations against **actual DINO
 CLS of the decoded one-step prediction**, without an inverse adapter or a learned
 CLS predictor. It also includes an output-velocity optimization control and
 train-pair CLS mean-difference extraction (including reuse of cached CLS tensors).
+The `cls_guidance_all_steps.json` and `cls_velocity_guidance_all_steps.json` configs
+run Adam on all four steps without an RMS cap, preservation penalty or best-iterate
+selection, and save each step's before/after one-step predictions.
 See [CLS_GUIDANCE.md](docs/CLS_GUIDANCE.md) for server commands and limitations.

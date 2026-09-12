@@ -1,0 +1,36 @@
+{
+  "direction_sha256": "b6205766f87e8eed23d6ae042aa5c3899ba558557a984dd91e86d7d7f0e40cc1",
+  "direction_details": {
+    "kind": "clean_cls"
+  },
+  "cls_signature": {
+    "model": "facebook/dinov2-large",
+    "revision": "47b73eefe95e8d44ec3623f8890bd894b6ea2d6c",
+    "size": 448,
+    "preprocessing": "full_frame_bicubic_square_imagenet"
+  },
+  "torch_version": "2.6.0+cu118",
+  "diffusers_version": "0.38.0",
+  "transformers_version": "4.49.0",
+  "source_sha256": {
+    "src/models/flux.py": "860d1af804b06af2c768989aa13d763a712459d5adac3ccb1e958217769944d4",
+    "src/dino_adapter/cls_guidance.py": "74591bbe71e7dd73a6c92538a8e67d6933e635f87637515fa9cb1208eef447b9",
+    "src/dino_adapter/cls_images.py": "f397af6c0f3e2cf4cc1c1ef2a2bcbfb29bfd756733326923c696be6ca61ee285",
+    "src/dino_adapter/cls_trajectory.py": "d7da03aca16b7d48c7b3fd500c20ba6bedccccca052e089b2f46c785214748e7",
+    "src/dino_adapter/cls_experiment.py": "77a1c94db1d97505e31a0a88ea4fe068bf2e72d740643ad30c01151ac7b0ae89",
+    "src/dino_adapter/features.py": "61afc97ccc1cc40a821f3fc8e1b4467daed2cc5ea5b5834d09e50775215315c8",
+    "src/dino_adapter/runtime.py": "37241b3764ad18b7fbdd76f14b2df1e2d521f95b20c0d75491467b3e28728b42",
+    "src/dino_adapter/cls_noise.py": "1cd928904fd5e0aebc87c70aa24ab5d1285e5149bddcc07c7851e2dd401ba9d8",
+    "src/dino_adapter/cls_objective.py": "4dfb41501b5db80d045d4fd419d2086472a715f77207c5f5f3978de706ed037d",
+    "src/dino_adapter/cls_audit.py": "fa76e5eea52227ed94c60ef2ad2e4e66f5fc002a048b685a4fd7477c9dc93c77"
+  },
+  "model_dtype": "torch.float32",
+  "vae_dtype": "torch.float32",
+  "dino_dtype": "torch.float32",
+  "decode_mode": "pipeline",
+  "torch_cuda_version": "11.8",
+  "deterministic_algorithms": false,
+  "cudnn_deterministic": false,
+  "cudnn_benchmark": false,
+  "float32_matmul_precision": "highest"
+}

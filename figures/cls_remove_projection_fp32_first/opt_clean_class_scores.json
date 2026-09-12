@@ -1,0 +1,135 @@
+{
+  "direction_sha256": "b6205766f87e8eed23d6ae042aa5c3899ba558557a984dd91e86d7d7f0e40cc1",
+  "runs": [
+    {
+      "image": "glasses_180_1_activation_joint_blocks0-1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18_alpha0.png",
+      "alpha": 0.0,
+      "reference_sha256": "31d4e28f08aba2b5e8d421315820eb63afd5b2b92be83172a530cd24a6501463",
+      "steps": []
+    },
+    {
+      "image": "glasses_180_1_activation_joint_blocks0-1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18_alpha1.png",
+      "alpha": 0.5,
+      "reference_sha256": "fea2e9a4ff5357a1600859db5457da9e3d81dceb28d97de45d14ac26c5b3f2ce",
+      "steps": [
+        {
+          "step": 0,
+          "sigma": 1.0,
+          "source_class_score": [
+            0.6938104033470154
+          ],
+          "target_class_score": [
+            0.19218775629997253
+          ],
+          "selected_class_score": [
+            0.38854163885116577
+          ],
+          "selected_semantic_loss": 0.02507072687149048,
+          "projected_removal": [
+            0.3052687644958496
+          ],
+          "requested_projected_removal": [
+            0.5016226172447205
+          ],
+          "remaining_mean_diffs": [
+            0.19635386765003204
+          ],
+          "projection_target_reached": [
+            false
+          ],
+          "projection_target_reachable": [
+            true
+          ]
+        },
+        {
+          "step": 1,
+          "sigma": 0.75,
+          "source_class_score": [
+            0.6813729405403137
+          ],
+          "target_class_score": [
+            0.17970944941043854
+          ],
+          "selected_class_score": [
+            0.4010563790798187
+          ],
+          "selected_semantic_loss": 0.023320963606238365,
+          "projected_removal": [
+            0.28031662106513977
+          ],
+          "requested_projected_removal": [
+            0.5016635656356812
+          ],
+          "remaining_mean_diffs": [
+            0.22134695947170258
+          ],
+          "projection_target_reached": [
+            false
+          ],
+          "projection_target_reachable": [
+            true
+          ]
+        },
+        {
+          "step": 2,
+          "sigma": 0.5,
+          "source_class_score": [
+            0.6724593639373779
+          ],
+          "target_class_score": [
+            0.17078691720962524
+          ],
+          "selected_class_score": [
+            0.34149736166000366
+          ],
+          "selected_semantic_loss": 0.01239283848553896,
+          "projected_removal": [
+            0.3309619426727295
+          ],
+          "requested_projected_removal": [
+            0.5016723871231079
+          ],
+          "remaining_mean_diffs": [
+            0.17071042954921722
+          ],
+          "projection_target_reached": [
+            false
+          ],
+          "projection_target_reachable": [
+            true
+          ]
+        },
+        {
+          "step": 3,
+          "sigma": 0.25,
+          "source_class_score": [
+            0.6275808215141296
+          ],
+          "target_class_score": [
+            0.1261209100484848
+          ],
+          "selected_class_score": [
+            0.26980823278427124
+          ],
+          "selected_semantic_loss": 0.008095172233879566,
+          "projected_removal": [
+            0.357772558927536
+          ],
+          "requested_projected_removal": [
+            0.5014598965644836
+          ],
+          "remaining_mean_diffs": [
+            0.14368736743927002
+          ],
+          "projection_target_reached": [
+            false
+          ],
+          "projection_target_reachable": [
+            true
+          ]
+        }
+      ]
+    }
+  ],
+  "note": "Scores use the saved float CLS: negative train centroid=0, positive=1. They are not probabilities or an independent check that glasses disappeared. Missing reference PT files in a figures selection require the original cluster output directory."
+}

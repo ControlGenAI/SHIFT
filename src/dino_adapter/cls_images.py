@@ -12,9 +12,9 @@ def one_step_latents(latents, velocity, sigma):
 
 def decode_latents(pipe, latents, resolution):
     height, width = resolution
-    unpacked = pipe._unpack_latents(latents, height, width, pipe.vae_scale_factor)
+    unpacked = pipe._unpack_latents(latents, height, width, pipe.vae_scale_factor).to(pipe.vae.dtype)
     unpacked = unpacked / pipe.vae.config.scaling_factor + pipe.vae.config.shift_factor
-    return pipe.vae.decode(unpacked.to(pipe.vae.dtype), return_dict=False)[0]
+    return pipe.vae.decode(unpacked, return_dict=False)[0]
 
 
 def pipeline_rgb(pipe, decoded):

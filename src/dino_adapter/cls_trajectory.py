@@ -12,7 +12,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 
-from .cls_guidance import CLSActivationGuidance, relative_rms
+from .cls_guidance import CLSActivationGuidance, relative_rms, correction_gradients
 from .cls_images import decode_final, one_step_latents
 
 
@@ -230,7 +230,7 @@ class CLSTrajectoryGuidance(CLSActivationGuidance):
                             source_cls=source.detach().cpu(), target_cls=target.cpu(), selected_cls=cls.detach().cpu()))
                     else:
                         optimizer.zero_grad(set_to_none=True)
-                        gradients = torch.autograd.grad(loss, tuple(corrections.values()))
+                        gradients = correction_gradients(loss, tuple(corrections.values()))
                         for row, u, gradient in zip(entry['per_block'], corrections.values(), gradients):
                             if not torch.isfinite(gradient).all():
                                 raise RuntimeError('Nonfinite channel gradient')

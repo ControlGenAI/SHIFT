@@ -31,7 +31,8 @@ def read_config(path):
 def signature(config):
     keys = ('model', 'model_revision', 'dino_model', 'dino_revision', 'dino_size',
             'width', 'height', 'step', 'inference_steps', 'guidance_scale')
-    return {k: config.get(k) for k in keys}
+    model_dtype, vae_dtype = pipeline_dtypes(config)
+    return dict(**{k: config.get(k) for k in keys}, model_dtype=str(model_dtype), vae_dtype=str(vae_dtype))
 
 
 def require_compatible(left, right):
@@ -47,10 +48,27 @@ def save_json(path, value):
     Path(path).write_text(json.dumps(value, indent=2, allow_nan=False) + '\n')
 
 
+def pipeline_dtypes(config):
+    allowed = {'bfloat16': torch.bfloat16, 'float32': torch.float32}
+    model = config.get('model_dtype', 'bfloat16')
+    vae = config.get('vae_dtype', model)
+    if model not in allowed or vae not in allowed:
+        raise ValueError('model_dtype and vae_dtype must be bfloat16 or float32')
+    return allowed[model], allowed[vae]
+
+
 def load_pipeline(config, device):
+    from diffusers import AutoencoderKL
     from src.models.flux import FluxPipeline
+    model_dtype, vae_dtype = pipeline_dtypes(config)
+    components = {}
+    if vae_dtype != model_dtype:
+        # Load in the requested precision, rather than upcasting weights already
+        # rounded by the pipeline's global BF16 loading option.
+        components['vae'] = AutoencoderKL.from_pretrained(config['model'], subfolder='vae',
+            revision=config.get('model_revision'), torch_dtype=vae_dtype)
     pipe = FluxPipeline.from_pretrained(config['model'], revision=config.get('model_revision'),
-                                         torch_dtype=torch.bfloat16).to(device)
+                                         torch_dtype=model_dtype, **components).to(device)
     for model in (pipe.transformer, pipe.vae, pipe.text_encoder, pipe.text_encoder_2):
         model.eval().requires_grad_(False)
     pipe.set_progress_bar_config(disable=True)

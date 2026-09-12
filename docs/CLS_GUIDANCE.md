@@ -430,3 +430,6 @@ FLUX/VAE/DINO, включая прямоугольное изображение,
 
 Разбор результатов `1a0f4f2`, исправление несовпадения decode и короткая проверка
 градиента на кластере: [CLS_SCALING_AUDIT.md](CLS_SCALING_AUDIT.md).
+
+Направление отдельно на каждой sigma через `image -> VAE -> noise -> one-step -> DINO CLS`,
+сравнение prompts и проверки BF16/FP32: [CLS_NOISED_MEAN.md](CLS_NOISED_MEAN.md).

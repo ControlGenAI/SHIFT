@@ -6,11 +6,13 @@ from src.dino_adapter.cls_guidance import CLSActivationGuidance
 from test_cls_pipeline import tiny_pipeline
 
 
-@pytest.mark.parametrize('dtype', [torch.float32, torch.bfloat16])
+@pytest.mark.parametrize('dtype,vae_dtype', [(torch.float32, torch.float32),
+    (torch.bfloat16, torch.bfloat16), (torch.bfloat16, torch.float32)])
 @pytest.mark.parametrize('saturated', [False, True])
 @pytest.mark.parametrize('num_steps', [3, 4])
-def test_last_step_cls_and_preview_match_actual_pipeline(dtype, saturated, num_steps):
+def test_last_step_cls_and_preview_match_actual_pipeline(dtype, vae_dtype, saturated, num_steps):
     pipe, dino, kwargs, direction = tiny_pipeline(dtype)
+    pipe.vae.to(dtype=vae_dtype)
     pipe.transformer.enable_gradient_checkpointing()
     kwargs['num_inference_steps'] = num_steps
     if saturated:

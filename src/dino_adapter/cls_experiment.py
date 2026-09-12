@@ -7,12 +7,14 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from .features import DinoFeatures
-from .runtime import load_pipeline, selected_blocks, save_json, digest, generate
+from .runtime import load_pipeline, selected_blocks, save_json, digest, generate, pipeline_dtypes
+from .cls_noise import direction_from_payload, extract_noised, noised_statistics, StepwiseCLSDirection
 from .cls_guidance import CLSActivationGuidance
 
 
 def read_cls_config(path):
     config = json.loads(Path(path).read_text())
+    pipeline_dtypes(config)
     if any(type(config[k]) is not int for k in ('width', 'height', 'dino_size', 'inference_steps')):
         raise ValueError('Image sizes and inference_steps must be integers')
     if config['width'] <= 0 or config['height'] <= 0 or config['width'] % 16 or config['height'] % 16:
@@ -54,7 +56,7 @@ def validate_records(rows):
         raise ValueError('Need complete train pairs')
 
 
-def paired_mean(rows, vectors):
+def paired_mean(rows, vectors, allow_zero=False):
     validate_records(rows)
     vectors = torch.as_tensor(vectors) if isinstance(vectors, torch.Tensor) else torch.stack(vectors)
     if vectors.ndim != 2 or len(vectors) != len(rows) or not torch.isfinite(vectors).all():
@@ -72,7 +74,7 @@ def paired_mean(rows, vectors):
     negatives = torch.stack([p[0] for p in pairs.values()])
     pos, neg = positives.mean(0), negatives.mean(0)
     direction = pos - neg
-    if direction.norm() < 1e-8:
+    if not allow_zero and direction.norm() < 1e-8:
         raise ValueError('Degenerate CLS direction')
     return dict(mean_positive=pos, mean_negative=neg, direction=direction,
                 train_pair_ids=sorted(pairs), n_train_pairs=len(pairs),
@@ -129,6 +131,11 @@ def mean_from_features(features, output):
     if path.exists():
         raise FileExistsError(path)
     payload = torch.load(features, map_location='cpu', weights_only=True)
+    if payload.get('kind') == 'noised_one_step':
+        statistics = noised_statistics(payload)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(statistics, path)
+        return
     statistics = paired_mean(payload['rows'], payload['cls'])
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(dict(version=1, **statistics, cls_signature=payload['cls_signature']), path)
@@ -159,6 +166,8 @@ def make_guidance(config, dino, direction, block, alpha, prediction_callback=Non
                                     prediction_callback=prediction_callback, **guidance_options(config))
     if objective != 'final':
         raise ValueError('objective must be one_step or final')
+    if isinstance(direction, StepwiseCLSDirection):
+        raise ValueError('Noise-level directions require the one_step objective')
     if settings.get('decode_mode', 'pipeline') != 'pipeline':
         raise ValueError('Final objective requires pipeline decoding')
     if settings.get('first_update_probe'):
@@ -187,6 +196,7 @@ def optimize(config, rows, direction_path, output, device):
     payload = torch.load(direction_path, map_location='cpu', weights_only=True)
     if cls_signature(config) != payload['cls_signature']:
         raise ValueError('CLS direction and guidance DINO model/preprocessing differ')
+    direction_spec = direction_from_payload(payload, config)
     if not rows or len({r['id'] for r in rows}) != len(rows):
         raise ValueError('Need nonempty prompts with unique IDs')
     conditioning = config['cls_optimization'].get('conditioning', 'source')
@@ -210,8 +220,11 @@ def optimize(config, rows, direction_path, output, device):
     # Validate optimization settings without model loading.
     options = guidance_options(config)
     joint = options['block_mode'] == 'joint'
-    preflight = make_guidance(config, None, payload['direction'], [0] if joint else 0, config['alphas'][0])
+    preflight = make_guidance(config, None, direction_spec, [0] if joint else 0, config['alphas'][0])
     preflight.validate_run(config['height'], config['width'], config['inference_steps'])
+    model_dtype, vae_dtype = pipeline_dtypes(config)
+    print('CLS optimization: ' + json.dumps(dict(**options, model_dtype=str(model_dtype),
+        vae_dtype=str(vae_dtype), dino_dtype='torch.float32', direction_kind=payload.get('kind', 'clean_cls'))), flush=True)
     root = Path(output)
     root.mkdir(parents=True, exist_ok=False)
     save_json(root / 'config.json', config)
@@ -220,11 +233,19 @@ def optimize(config, rows, direction_path, output, device):
     source_files = ['src/models/flux.py', 'src/dino_adapter/cls_guidance.py',
                     'src/dino_adapter/cls_images.py', 'src/dino_adapter/cls_trajectory.py',
                     'src/dino_adapter/cls_experiment.py', 'src/dino_adapter/features.py',
-                    'src/dino_adapter/runtime.py']
+                    'src/dino_adapter/runtime.py', 'src/dino_adapter/cls_noise.py']
+    direction_details = dict(kind=payload.get('kind', 'clean_cls'))
+    if isinstance(direction_spec, StepwiseCLSDirection):
+        direction_details.update(estimation=payload['estimation'],
+            prediction_signature=payload['prediction_signature'], steps=list(direction_spec.steps),
+            sigmas=direction_spec.sigmas.tolist(), timesteps=direction_spec.timesteps.tolist(),
+            norms=direction_spec.values.norm(dim=-1).tolist())
     save_json(root / 'provenance.json', dict(direction_sha256=digest(direction_path),
+              direction_details=direction_details,
               cls_signature=payload['cls_signature'], torch_version=str(torch.__version__),
               diffusers_version=diffusers.__version__, transformers_version=transformers.__version__,
               source_sha256={name: digest(source_root / name) for name in source_files},
+              model_dtype=str(model_dtype), vae_dtype=str(vae_dtype), dino_dtype='torch.float32',
               decode_mode=options['decode_mode'], torch_cuda_version=torch.version.cuda,
               deterministic_algorithms=torch.are_deterministic_algorithms_enabled(),
               cudnn_deterministic=torch.backends.cudnn.deterministic,
@@ -262,6 +283,7 @@ def optimize(config, rows, direction_path, output, device):
                     block_mode=options['block_mode'], objective=objective, conditioning=conditioning,
                     correction_scaling=options['correction_scaling'], match_rms_adam=options['match_rms_adam'],
                     decode_mode=options['decode_mode'],
+                    direction_kind=payload.get('kind', 'clean_cls'),
                     generation_prompt=row['target_prompt'] if conditioning == 'paired_target' and alpha != 0 else row['prompt'])
                 def save_prediction(step, stage, decoded, stem=name):
                     preview = pipe.image_processor.postprocess(decoded.detach(), output_type='pil')[0]
@@ -271,7 +293,7 @@ def optimize(config, rows, direction_path, output, device):
                         preview = pipe.image_processor.postprocess(decoded.detach(), output_type='pil')[0]
                         preview.save(root / f'{stem}_iteration{iteration}_final.png')
                         print(f'{stem}: saved final image at iteration {iteration}', flush=True)
-                guidance = make_guidance(config, dino, payload['direction'], block, alpha,
+                guidance = make_guidance(config, dino, direction_spec, block, alpha,
                     prediction_callback=save_prediction if settings.get('save_step_predictions', False) else None,
                     iteration_callback=save_iteration if objective == 'final' else None, reference_rgb=source_rgb)
                 image = pipe(intervention['generation_prompt'], width=config['width'], height=config['height'],
@@ -281,12 +303,15 @@ def optimize(config, rows, direction_path, output, device):
                 image.save(root / f'{name}.png')
                 torch.save(guidance.references, root / f'{name}_cls_targets.pt')
                 _, final_cls = dino(image, None)
-                direction = payload['direction'].cpu()
+                direction = (payload['clean_reference_direction'] if isinstance(direction_spec, StepwiseCLSDirection)
+                             else payload['direction']).cpu()
                 # Post-generation check: does optimizing x0 CLS affect the final image?
-                projected_removal = float(((baseline_cls - final_cls) * direction).sum() / direction.square().sum())
+                projected_removal = (float(((baseline_cls - final_cls) * direction).sum() / direction.square().sum())
+                                     if torch.count_nonzero(direction) else None)
                 import numpy as np
                 delta = np.asarray(image, dtype=np.float32) - np.asarray(baseline, dtype=np.float32)
                 metrics = dict(final_cls_removal_proxy=projected_removal,
+                               removal_proxy_basis='clean_cls_mean_diff',
                                baseline_pixel_mae=float(abs(delta).mean()), baseline_pixel_max_abs=float(abs(delta).max()))
                 if objective == 'final' and guidance.references:
                     reference = guidance.references[-1]
@@ -310,6 +335,17 @@ def audit_direction(features_path, direction_path, output):
     payload = torch.load(direction_path, map_location='cpu', weights_only=True)
     if features['cls_signature'] != payload['cls_signature']:
         raise ValueError('Features and direction DINO signatures differ')
+    if features.get('kind') == 'noised_one_step' or payload.get('kind') == 'noised_one_step':
+        from .cls_noise import audit_noised_direction
+        report = audit_noised_direction(features, payload)
+        report.update(direction_sha256=digest(direction_path), features_sha256=digest(features_path))
+        path = Path(output)
+        if path.exists():
+            raise FileExistsError(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        save_json(path, report)
+        print(json.dumps(report, indent=2), flush=True)
+        return
     rows = features['rows']
     statistics = paired_mean(rows, features['cls'])
     direction = payload['direction'].float()
@@ -372,6 +408,12 @@ def main():
     source.add_argument('--dataset', help='Existing SHIFT dataset with dataset.json')
     ex.add_argument('--cached-cls', action='store_true', help='Use existing features.pt CLS; no models loaded')
     ex.add_argument('--output', required=True)
+    noised = sub.add_parser('extract-noised', help='Paired mean diff at each scheduler noise level, through one-step prediction')
+    source = noised.add_mutually_exclusive_group(required=True)
+    source.add_argument('--manifest')
+    source.add_argument('--dataset')
+    noised.add_argument('--output', required=True)
+    noised.add_argument('--resume', action='store_true', help='Reuse per-image CLS with identical inputs/config/code')
     mean = sub.add_parser('mean', help='Recompute paired mean from saved cls_features.pt, no model loading')
     mean.add_argument('--features', required=True)
     mean.add_argument('--output', required=True)
@@ -408,6 +450,8 @@ def main():
         config['cls_optimization']['learning_rate'] = args.learning_rate
     if args.command == 'extract':
         extract(config, args.manifest, args.dataset, args.output, args.device, args.cached_cls)
+    elif args.command == 'extract-noised':
+        extract_noised(config, args.manifest, args.dataset, args.output, args.device, args.resume)
     else:
         if args.num_samples < 1:
             raise ValueError('--num-samples must be positive')

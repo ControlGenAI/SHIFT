@@ -165,6 +165,17 @@ def retrieve_timesteps(
     return timesteps, num_inference_steps
 
 
+def prepare_flow_schedule(scheduler, num_inference_steps, device, image_seq_len, sigmas=None):
+    """Use the same resolution-dependent schedule for generation and CLS extraction."""
+    sigmas = np.linspace(1.0, 1 / num_inference_steps, num_inference_steps) if sigmas is None else sigmas
+    if scheduler.config.get("use_flow_sigmas", False):
+        sigmas = None
+    mu = calculate_shift(image_seq_len,
+        scheduler.config.get("base_image_seq_len", 256), scheduler.config.get("max_image_seq_len", 4096),
+        scheduler.config.get("base_shift", 0.5), scheduler.config.get("max_shift", 1.15))
+    return retrieve_timesteps(scheduler, num_inference_steps, device, sigmas=sigmas, mu=mu)
+
+
 class FluxPipeline(
     DiffusionPipeline,
     FluxLoraLoaderMixin,
@@ -911,24 +922,8 @@ class FluxPipeline(
     
 
         # 5. Prepare timesteps
-        sigmas = np.linspace(1.0, 1 / num_inference_steps, num_inference_steps) if sigmas is None else sigmas
-        if hasattr(self.scheduler.config, "use_flow_sigmas") and self.scheduler.config.use_flow_sigmas:
-            sigmas = None
-        image_seq_len = latents.shape[1]
-        mu = calculate_shift(
-            image_seq_len,
-            self.scheduler.config.get("base_image_seq_len", 256),
-            self.scheduler.config.get("max_image_seq_len", 4096),
-            self.scheduler.config.get("base_shift", 0.5),
-            self.scheduler.config.get("max_shift", 1.15),
-        )
-        timesteps, num_inference_steps = retrieve_timesteps(
-            self.scheduler,
-            num_inference_steps,
-            device,
-            sigmas=sigmas,
-            mu=mu,
-        )
+        timesteps, num_inference_steps = prepare_flow_schedule(
+            self.scheduler, num_inference_steps, device, latents.shape[1], sigmas=sigmas)
         num_warmup_steps = max(len(timesteps) - num_inference_steps * self.scheduler.order, 0)
         self._num_timesteps = len(timesteps)
         if activation_guidance is not None:
@@ -1148,7 +1143,7 @@ class FluxPipeline(
         if output_type == "latent":
             image = latents
         else:
-            latents = self._unpack_latents(latents, height, width, self.vae_scale_factor)
+            latents = self._unpack_latents(latents, height, width, self.vae_scale_factor).to(self.vae.dtype)
             latents = (latents / self.vae.config.scaling_factor) + self.vae.config.shift_factor
             image = self.vae.decode(latents, return_dict=False)[0]
             image = self.image_processor.postprocess(image, output_type=output_type)

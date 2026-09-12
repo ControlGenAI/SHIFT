@@ -17,7 +17,8 @@ def align_patches(patches, source_grid, target_grid):
 class DinoFeatures:
     def __init__(self, model_name, size, device, revision=None):
         from transformers import AutoModel
-        self.model = AutoModel.from_pretrained(model_name, revision=revision).to(device).eval()
+        self.model = AutoModel.from_pretrained(model_name, revision=revision, torch_dtype=torch.float32).to(
+            device=device, dtype=torch.float32).eval()
         self.model.requires_grad_(False)
         self.size, self.device = size, device
         if size % self.model.config.patch_size:
@@ -29,6 +30,12 @@ class DinoFeatures:
         """Differentiable BCHW RGB [0,1] -> patches, CLS; no PIL/detach/clamp."""
         if rgb.ndim != 4 or rgb.shape[1] != 3:
             raise ValueError('Expected BCHW RGB')
+        # A surrounding FLUX autocast must not silently change the DINO feature
+        # space. Casting the final CLS back to float32 cannot undo that change.
+        with torch.autocast(device_type=rgb.device.type, enabled=False):
+            return self._tensor_features_fp32(rgb, target_grid)
+
+    def _tensor_features_fp32(self, rgb, target_grid):
         rgb = F.interpolate(rgb.float(), (self.size, self.size), mode='bicubic',
                             align_corners=False, antialias=True)
         mean = rgb.new_tensor([.485, .456, .406])[None, :, None, None]

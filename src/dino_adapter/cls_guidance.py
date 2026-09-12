@@ -9,10 +9,18 @@ import math
 import torch
 import torch.nn.functional as F
 from .cls_images import decode_latents, one_step_latents, pipeline_rgb
+from .cls_noise import StepwiseCLSDirection
 
 
 def relative_rms(delta, reference_scale):
     return (delta.float().square().mean(dim=(1, 2), keepdim=True).sqrt() / reference_scale).flatten()
+
+
+def correction_gradients(loss, parameters):
+    # Backward under an enclosing autocast can downcast FP32 DINO/VAE matrix
+    # operations even when their forward was explicitly outside autocast.
+    with torch.autocast(device_type=loss.device.type, enabled=False):
+        return torch.autograd.grad(loss, parameters)
 
 
 @contextmanager
@@ -124,9 +132,16 @@ class CLSActivationGuidance:
             raise ValueError('prediction_callback must be callable')
         if optimization_space not in ('activation', 'velocity'):
             raise ValueError('optimization_space must be activation or velocity')
-        if direction.ndim != 1 or not torch.isfinite(direction).all() or direction.norm() <= 1e-8:
-            raise ValueError('Need a nonzero finite CLS mean-difference vector')
-        self.dino, self.direction = dino, direction.detach().float()
+        if isinstance(direction, StepwiseCLSDirection):
+            if any(s not in direction.steps for s in steps):
+                raise ValueError('Missing noise-level CLS directions for selected optimization steps')
+            if decode_mode != direction.signature['decode_mode']:
+                raise ValueError('CLS direction and objective decoding differ')
+        else:
+            if direction.ndim != 1 or not torch.isfinite(direction).all() or direction.norm() <= 1e-8:
+                raise ValueError('Need a nonzero finite CLS mean-difference vector')
+            direction = direction.detach().float()
+        self.dino, self.direction = dino, direction
         self.block, self.steps, self.alpha = block, set(steps), alpha
         self.blocks, self.joint = blocks, block_mode == 'joint'
         self.iterations, self.lr = iterations, learning_rate
@@ -193,7 +208,7 @@ class CLSActivationGuidance:
                         velocity_relative_rms=relative_rms(velocity.detach().float() - baseline_velocity.float(),
                                                           velocity_scale).cpu().tolist())
                     if multiplier == 0:
-                        repeated = torch.autograd.grad(loss, tuple(corrections.values()))
+                        repeated = correction_gradients(loss, tuple(corrections.values()))
                         row['repeat_gradients'] = []
                         for (i, u), gradient in zip(corrections.items(), repeated):
                             if not torch.isfinite(gradient).all():
@@ -250,10 +265,15 @@ class CLSActivationGuidance:
                 raise ValueError('Timestep does not match the scheduler index')
         index_before = getattr(pipe.scheduler, 'step_index', None)
         sigma = pipe.scheduler.sigmas[step].to(device=latents.device, dtype=torch.float32)
-        if self.alpha == 0:
+        direction = (self.direction.at(pipe, step, sigma, timestep)
+                     if isinstance(self.direction, StepwiseCLSDirection) else self.direction)
+        direction_norm = float(direction.norm())
+        if self.alpha == 0 or not torch.count_nonzero(direction):
             with torch.no_grad():
                 velocity = pipe.transformer(**kwargs)[0]
-            self.logs.append(dict(step=step, alpha=0., bypass=True,
+            self.logs.append(dict(step=step, alpha=self.alpha, bypass=True,
+                reason='alpha_zero' if self.alpha == 0 else 'zero_mean_diff', sigma=float(sigma),
+                direction_norm=direction_norm,
                 correction_scaling=self.correction_scaling, match_rms_adam=self.match_rms_adam,
                 decode_mode=self.decode_mode))
             return velocity
@@ -282,7 +302,7 @@ class CLSActivationGuidance:
         velocity_scale = baseline_velocity.float().square().mean((1, 2), keepdim=True).sqrt().clamp_min(1e-6)
         with torch.no_grad():
             source_cls = self.cls_of_velocity(pipe, latents, baseline_velocity, sigma)
-            direction = self.direction.to(source_cls.device)
+            direction = direction.to(source_cls.device)
             if direction.shape != source_cls.shape[-1:]:
                 raise ValueError('CLS direction must match DINO hidden size')
             raw_target = source_cls - self.alpha * direction
@@ -376,7 +396,7 @@ class CLSActivationGuidance:
                     self.logs.append(entry)
                     if iteration < self.iterations:
                         optimizer.zero_grad(set_to_none=True)
-                        gradients = torch.autograd.grad(loss, tuple(corrections.values()))
+                        gradients = correction_gradients(loss, tuple(corrections.values()))
                         if any(not torch.isfinite(g).all() for g in gradients):
                             raise RuntimeError('Nonfinite activation gradient')
                         entry.update(gradient_rms=float(torch.stack([g.square().mean() for g in gradients]).mean().sqrt()),
@@ -415,6 +435,8 @@ class CLSActivationGuidance:
                               learning_rate=self.lr, iterations=self.iterations,
                               correction_scaling=self.correction_scaling, match_rms_adam=self.match_rms_adam,
                               decode_mode=self.decode_mode,
+                              direction_norm=direction_norm, vae_dtype=str(pipe.vae.dtype),
+                              cls_dtype=str(selected_cls.dtype),
                               optimizer_groups=optimizer_groups,
                               sigma=float(sigma), model_tensor_dtype=str(model_dtype),
                               correction_dtype='torch.float32',
@@ -429,7 +451,8 @@ class CLSActivationGuidance:
             with torch.no_grad():
                 self.prediction_callback(step, 'after', self.decode_velocity(pipe, latents, selected_velocity, sigma))
         self.references.append(dict(step=step, sigma=float(sigma), source_cls=source_cls.detach().cpu(),
-                                    target_cls=target.cpu(), selected_cls=selected_cls.detach().cpu()))
+                                    target_cls=target.cpu(), selected_cls=selected_cls.detach().cpu(),
+                                    direction=direction.detach().cpu()))
         # This is the velocity actually evaluated for the selected intervention.
         # There is no update to latents here; the outer pipeline takes exactly one step.
         return selected_velocity

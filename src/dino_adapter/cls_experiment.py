@@ -7,9 +7,11 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from .features import DinoFeatures
-from .runtime import load_pipeline, selected_blocks, save_json, digest, generate, pipeline_dtypes
+from .runtime import load_pipeline, selected_blocks, save_json, digest, generate, pipeline_dtypes, load_image_dataset
 from .cls_noise import direction_from_payload, extract_noised, noised_statistics, StepwiseCLSDirection
 from .cls_guidance import CLSActivationGuidance
+from .cls_objective import class_projection, cls_loss
+from .cls_audit import reference_scores
 
 
 def read_cls_config(path):
@@ -90,7 +92,7 @@ def extract(config, manifest, dataset, output, device, cached=False):
     data = None
     if dataset is not None:
         root_images = Path(dataset)
-        data = json.loads((root_images / 'dataset.json').read_text())
+        data = load_image_dataset(root_images)
         rows = data['samples']
         if cached and cls_signature(data['config']) != cls_signature(config):
             raise ValueError('Cached CLS has different DINO model/preprocessing')
@@ -154,7 +156,8 @@ def guidance_options(config):
                 correction_scaling=settings.get('correction_scaling', 'rms'),
                 match_rms_adam=settings.get('match_rms_adam', False),
                 decode_mode=settings.get('decode_mode', 'pipeline'),
-                first_update_probe=settings.get('first_update_probe', []))
+                first_update_probe=settings.get('first_update_probe', []),
+                cls_loss=settings.get('cls_loss', 'shifted_cls'))
 
 
 def make_guidance(config, dino, direction, block, alpha, prediction_callback=None, iteration_callback=None,
@@ -166,6 +169,8 @@ def make_guidance(config, dino, direction, block, alpha, prediction_callback=Non
                                     prediction_callback=prediction_callback, **guidance_options(config))
     if objective != 'final':
         raise ValueError('objective must be one_step or final')
+    if settings.get('cls_loss', 'shifted_cls') != 'shifted_cls':
+        raise ValueError('projection CLS loss is supported by the one_step objective')
     if isinstance(direction, StepwiseCLSDirection):
         raise ValueError('Noise-level directions require the one_step objective')
     if settings.get('decode_mode', 'pipeline') != 'pipeline':
@@ -200,6 +205,10 @@ def optimize(config, rows, direction_path, output, device):
     if not rows or len({r['id'] for r in rows}) != len(rows):
         raise ValueError('Need nonempty prompts with unique IDs')
     conditioning = config['cls_optimization'].get('conditioning', 'source')
+    control = config['cls_optimization'].get('save_target_prompt_control', False)
+    if type(control) is not bool:
+        raise ValueError('save_target_prompt_control must be boolean')
+    needs_target = conditioning == 'paired_target' or control
     if conditioning not in ('source', 'paired_target'):
         raise ValueError('conditioning must be source or paired_target')
     if conditioning == 'paired_target' and config['cls_optimization'].get('objective') != 'final':
@@ -211,8 +220,8 @@ def optimize(config, rows, direction_path, output, device):
             raise ValueError('Need a prompt and integer seed')
         if not row['id'] or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-' for c in row['id']):
             raise ValueError('Unsafe output ID')
-        if conditioning == 'paired_target' and (not isinstance(row.get('target_prompt'), str) or not row['target_prompt'].strip()):
-            raise ValueError('paired_target requires an explicit target_prompt or a matching negative dataset row')
+        if needs_target and (not isinstance(row.get('target_prompt'), str) or not row['target_prompt'].strip()):
+            raise ValueError('Target-prompt control/conditioning requires target_prompt or a matching negative dataset row')
     settings = config['cls_optimization']
     space = settings.get('space', 'activation')
     if not settings['steps'] or any(s < 0 or s >= config['inference_steps'] for s in settings['steps']):
@@ -233,7 +242,8 @@ def optimize(config, rows, direction_path, output, device):
     source_files = ['src/models/flux.py', 'src/dino_adapter/cls_guidance.py',
                     'src/dino_adapter/cls_images.py', 'src/dino_adapter/cls_trajectory.py',
                     'src/dino_adapter/cls_experiment.py', 'src/dino_adapter/features.py',
-                    'src/dino_adapter/runtime.py', 'src/dino_adapter/cls_noise.py']
+                    'src/dino_adapter/runtime.py', 'src/dino_adapter/cls_noise.py',
+                    'src/dino_adapter/cls_objective.py', 'src/dino_adapter/cls_audit.py']
     direction_details = dict(kind=payload.get('kind', 'clean_cls'))
     if isinstance(direction_spec, StepwiseCLSDirection):
         direction_details.update(estimation=payload['estimation'],
@@ -265,9 +275,10 @@ def optimize(config, rows, direction_path, output, device):
             _, baseline_cls = dino(baseline, None)
         entries.append(dict(sample_id=row['id'], mode='baseline', image=f"{row['id']}_baseline.png"))
         source_rgb = None
-        if conditioning == 'paired_target':
-            from torchvision.transforms.functional import pil_to_tensor
-            source_rgb = pil_to_tensor(baseline.convert('RGB')).unsqueeze(0).float() / 255
+        if needs_target:
+            if conditioning == 'paired_target':
+                from torchvision.transforms.functional import pil_to_tensor
+                source_rgb = pil_to_tensor(baseline.convert('RGB')).unsqueeze(0).float() / 255
             prompt_only = generate(pipe, config, row['target_prompt'], row['seed'])
             prompt_only.save(root / f"{row['id']}_target_prompt_only.png")
             entries.append(dict(sample_id=row['id'], mode='target_prompt_only',
@@ -283,6 +294,7 @@ def optimize(config, rows, direction_path, output, device):
                     block_mode=options['block_mode'], objective=objective, conditioning=conditioning,
                     correction_scaling=options['correction_scaling'], match_rms_adam=options['match_rms_adam'],
                     decode_mode=options['decode_mode'],
+                    cls_loss=options['cls_loss'],
                     direction_kind=payload.get('kind', 'clean_cls'),
                     generation_prompt=row['target_prompt'] if conditioning == 'paired_target' and alpha != 0 else row['prompt'])
                 def save_prediction(step, stage, decoded, stem=name):
@@ -313,16 +325,27 @@ def optimize(config, rows, direction_path, output, device):
                 metrics = dict(final_cls_removal_proxy=projected_removal,
                                removal_proxy_basis='clean_cls_mean_diff',
                                baseline_pixel_mae=float(abs(delta).mean()), baseline_pixel_max_abs=float(abs(delta).max()))
+                if 'mean_negative' in payload:
+                    if not isinstance(direction_spec, StepwiseCLSDirection):
+                        metrics.update(final_cls_class_score=class_projection(final_cls, payload['mean_negative'], direction),
+                                       final_cls_class_score_basis='clean_cls')
+                    elif config['inference_steps'] - 1 in direction_spec.steps:
+                        last = direction_spec.steps.index(config['inference_steps'] - 1)
+                        metrics.update(final_cls_class_score=class_projection(final_cls, payload['mean_negative'][last],
+                                                                              payload['directions'][last]),
+                                       final_cls_class_score_basis=f'noised_sigma_{float(direction_spec.sigmas[last])}')
                 if objective == 'final' and guidance.references:
                     reference = guidance.references[-1]
                     metrics.update(final_png_target_loss=float(.5 * (final_cls - reference['target_cls'][0]).square().sum(-1).mean()),
                         evaluated_to_png_cls_l2=float((final_cls - reference['selected_cls'][0]).norm(dim=-1).mean()))
                 elif guidance.references and guidance.references[-1]['step'] == config['inference_steps'] - 1:
                     reference = guidance.references[-1]
-                    metrics.update(final_png_target_loss=float(.5 * (final_cls - reference['target_cls']).square().sum(-1).mean()),
+                    metrics.update(final_png_target_loss=float(cls_loss(final_cls, reference['target_cls'],
+                        reference['direction'], alpha, options['cls_loss'])),
                         evaluated_to_png_cls_l2=float((final_cls - reference['selected_cls']).norm(dim=-1).mean()))
+                scores = reference_scores(guidance.references, payload, alpha)
                 save_json(root / f'{name}.json', dict(sample=row, **intervention,
-                          alpha=alpha, space=space, logs=guidance.logs, **metrics))
+                          alpha=alpha, space=space, logs=guidance.logs, cls_class_scores=scores, **metrics))
                 entries.append(dict(sample_id=row['id'], mode=space, **intervention,
                                     alpha=alpha, image=f'{name}.png', **metrics))
                 save_json(root / 'generations.json', entries)
@@ -386,9 +409,9 @@ def audit_direction(features_path, direction_path, output):
     print(json.dumps(report, indent=2), flush=True)
 
 
-def held_out_prompts(samples, split, conditioning='source'):
+def held_out_prompts(samples, split, conditioning='source', include_target=False):
     rows = [r.copy() for r in samples if r['split'] == split and r['label'] == 1]
-    if conditioning == 'paired_target':
+    if conditioning == 'paired_target' or include_target:
         for row in rows:
             matches = [r for r in samples if r['pair_id'] == row['pair_id'] and r['label'] == 0]
             if len(matches) != 1 or matches[0]['split'] != split or matches[0]['seed'] != row['seed']:
@@ -421,6 +444,10 @@ def main():
     audit.add_argument('--features', required=True)
     audit.add_argument('--direction', required=True)
     audit.add_argument('--output', required=True)
+    run_audit = sub.add_parser('audit-run', help='Class positions of saved one-step CLS targets; no models/GPU')
+    run_audit.add_argument('--results', required=True)
+    run_audit.add_argument('--direction', required=True)
+    run_audit.add_argument('--output', required=True)
     evaluate = sub.add_parser('evaluate', help='Independent eyewear classifier and optional face identity on saved PNGs')
     evaluate.add_argument('--results', required=True)
     evaluate.add_argument('--output', required=True)
@@ -432,6 +459,8 @@ def main():
     opt.add_argument('--split', choices=['val', 'test'], default='test')
     opt.add_argument('--num-samples', type=int, default=1)
     opt.add_argument('--learning-rate', type=float, help='Override the configured Adam LR; saved in the run config')
+    opt.add_argument('--iterations', type=int, help='Override inner updates per denoising step; saved in run config')
+    opt.add_argument('--alphas', type=float, nargs='+', help='Override target shifts, including 0; saved in run config')
     opt.add_argument('--direction', required=True)
     opt.add_argument('--output', required=True)
     args = parser.parse_args()
@@ -441,6 +470,10 @@ def main():
     if args.command == 'audit':
         audit_direction(args.features, args.direction, args.output)
         return
+    if args.command == 'audit-run':
+        from .cls_audit import audit_saved_run
+        audit_saved_run(args.results, args.direction, args.output)
+        return
     if args.command == 'evaluate':
         from .cls_evaluation import evaluate_saved
         evaluate_saved(args.results, args.output, args.device, args.with_identity)
@@ -448,6 +481,13 @@ def main():
     config = read_cls_config(args.config)
     if args.command == 'optimize' and args.learning_rate is not None:
         config['cls_optimization']['learning_rate'] = args.learning_rate
+    if args.command == 'optimize' and args.iterations is not None:
+        config['cls_optimization']['iterations'] = args.iterations
+    if args.command == 'optimize' and args.alphas is not None:
+        if (not args.alphas or 0 not in args.alphas or len(set(args.alphas)) != len(args.alphas)
+                or any(not math.isfinite(a) for a in args.alphas)):
+            raise ValueError('Use distinct finite alphas including zero')
+        config['alphas'] = args.alphas
     if args.command == 'extract':
         extract(config, args.manifest, args.dataset, args.output, args.device, args.cached_cls)
     elif args.command == 'extract-noised':
@@ -458,8 +498,9 @@ def main():
         if args.prompts:
             rows = read_rows(args.prompts)
         else:
-            data = json.loads((Path(args.dataset) / 'dataset.json').read_text())
-            rows = held_out_prompts(data['samples'], args.split, config['cls_optimization'].get('conditioning', 'source'))
+            data = load_image_dataset(args.dataset)
+            rows = held_out_prompts(data['samples'], args.split, config['cls_optimization'].get('conditioning', 'source'),
+                                   config['cls_optimization'].get('save_target_prompt_control', False))
         optimize(config, rows[:args.num_samples], args.direction, args.output, args.device)
 
 

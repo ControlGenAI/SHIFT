@@ -210,7 +210,8 @@ def test_means_are_train_only_and_average_normalized_observations():
 
 
 @pytest.mark.parametrize('conditioning', ['shared_prompt', 'paired_prompts'])
-def test_extract_resume_mean_audit_and_optimize_end_to_end(tmp_path, monkeypatch, conditioning):
+@pytest.mark.parametrize('source_kind', ['manifest', 'dataset'])
+def test_extract_resume_mean_audit_and_optimize_end_to_end(tmp_path, monkeypatch, conditioning, source_kind):
     from src.dino_adapter import cls_noise, cls_experiment
     pipe, dino, kwargs, _ = tiny_pipeline()
     settings = config()
@@ -233,8 +234,16 @@ def test_extract_resume_mean_audit_and_optimize_end_to_end(tmp_path, monkeypatch
                              split='train' if pair == 0 else 'test', prompt=f'portrait {label}'))
     manifest = tmp_path / 'manifest.jsonl'
     manifest.write_text('\n'.join(json.dumps(r) for r in rows))
+    dataset = None
+    if source_kind == 'dataset':
+        # Screened images are intentionally missing: exclusion must happen
+        # before reading images, loading models, or forming the train mean.
+        excluded = [dict(r, id='excluded_' + r['id'], pair_id='excluded', image='missing.png') for r in rows[:2]]
+        (tmp_path / 'dataset.json').write_text(json.dumps(dict(samples=rows + excluded)))
+        (tmp_path / 'excluded_pairs.json').write_text(json.dumps(dict(pair_ids=['excluded'])))
+        manifest, dataset = None, tmp_path
     output = tmp_path / 'features'
-    extract_noised(settings, manifest, None, output, 'cpu')
+    extract_noised(settings, manifest, dataset, output, 'cpu')
     features = torch.load(output / 'cls_features.pt', weights_only=True)
     payload = torch.load(output / 'cls_direction.pt', weights_only=True)
     assert features['cls'].shape == (4, 2, 2, 12)
@@ -250,7 +259,7 @@ def test_extract_resume_mean_audit_and_optimize_end_to_end(tmp_path, monkeypatch
     def forbidden(*args):
         raise AssertionError('Resume should use the saved per-image features')
     monkeypatch.setattr(cls_noise, 'encode_image', forbidden)
-    extract_noised(settings, manifest, None, output, 'cpu', resume=True)
+    extract_noised(settings, manifest, dataset, output, 'cpu', resume=True)
     cls_experiment.optimize(settings, [rows[-1]], output / 'cls_direction.pt', tmp_path / 'edited', 'cpu')
     generations = json.loads((tmp_path / 'edited' / 'generations.json').read_text())
     assert generations[-2]['baseline_pixel_max_abs'] == 0
@@ -266,4 +275,4 @@ def test_extract_resume_mean_audit_and_optimize_end_to_end(tmp_path, monkeypatch
     with pytest.raises(ValueError, match='identical config'):
         changed = copy.deepcopy(settings)
         changed['cls_direction_estimation']['noise_seed'] += 1
-        extract_noised(changed, manifest, None, output, 'cpu', resume=True)
+        extract_noised(changed, manifest, dataset, output, 'cpu', resume=True)

@@ -15,7 +15,7 @@ from PIL import Image
 
 from .cls_images import decode_final, one_step_latents
 from .features import DinoFeatures
-from .runtime import digest, load_pipeline, pipeline_dtypes, save_json
+from .runtime import digest, load_pipeline, pipeline_dtypes, save_json, load_image_dataset
 
 
 def prediction_signature(config):
@@ -177,7 +177,7 @@ def extract_noised(config, manifest, dataset, output, device, resume=False):
     settings = extraction_settings(config)
     if dataset is not None:
         image_root = Path(dataset)
-        rows = json.loads((image_root / 'dataset.json').read_text())['samples']
+        rows = load_image_dataset(image_root)['samples']
     else:
         image_root = Path(manifest).parent
         rows = read_rows(manifest)

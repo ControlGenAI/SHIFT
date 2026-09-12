@@ -433,3 +433,7 @@ FLUX/VAE/DINO, включая прямоугольное изображение,
 
 Направление отдельно на каждой sigma через `image -> VAE -> noise -> one-step -> DINO CLS`,
 сравнение prompts и проверки BF16/FP32: [CLS_NOISED_MEAN.md](CLS_NOISED_MEAN.md).
+
+Разбор результатов `22c0ae9`, сдвиг только вдоль концепта без штрафа на остальные
+координаты CLS, проверка более сильных alpha и `audit-run` без GPU:
+[CLS_REMOVAL.md](CLS_REMOVAL.md).

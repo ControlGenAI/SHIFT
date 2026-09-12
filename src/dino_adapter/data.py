@@ -4,7 +4,7 @@ from contextlib import ExitStack
 from pathlib import Path
 import torch
 from .hooks import ImageBlockHook
-from .runtime import generate, load_pipeline, save_json, selected_blocks, signature
+from .runtime import generate, load_pipeline, save_json, selected_blocks, signature, load_image_dataset
 
 SAFE = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-')
 
@@ -145,18 +145,7 @@ def collect(config, pairs_path, output, device, resume=False):
 
 
 def load_dataset(root):
-    root = Path(root)
-    data = json.loads((root / 'dataset.json').read_text())
-    # Pairs that failed screening stay on disk but are dropped from every split,
-    # so the exclusion list is explicit, versioned and applied uniformly.
-    excluded_path = root / 'excluded_pairs.json'
-    if excluded_path.exists():
-        excluded = set(json.loads(excluded_path.read_text())['pair_ids'])
-        kept = [s for s in data['samples'] if s['pair_id'] not in excluded]
-        if len(kept) == len(data['samples']) and excluded:
-            raise ValueError('excluded_pairs.json lists pairs that are not in the dataset')
-        data['samples'] = kept
-        data['excluded_pair_ids'] = sorted(excluded)
+    data = load_image_dataset(root)
     seen, pairs = set(), {}
     for sample in data['samples']:
         if sample['id'] in seen or sample['label'] not in (0, 1):

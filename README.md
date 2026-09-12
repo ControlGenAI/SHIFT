@@ -134,3 +134,5 @@ every double block on all four steps, using one shared CLS objective. Residuals
 are added to live outputs so gradients reach earlier blocks; checkpoint backward
 uses the same interventions. This config also disables caps, penalties and rollback.
 See [CLS_GUIDANCE.md](docs/CLS_GUIDANCE.md) for server commands and limitations.
+For the `22c0ae9` results, a removal-only projection loss, stronger alpha sweeps,
+and auditing saved CLS without a GPU, see [CLS_REMOVAL.md](docs/CLS_REMOVAL.md).

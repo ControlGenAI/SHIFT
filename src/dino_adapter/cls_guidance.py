@@ -7,9 +7,9 @@ or image detachment is used within the differentiable objective.
 from contextlib import contextmanager, ExitStack
 import math
 import torch
-import torch.nn.functional as F
 from .cls_images import decode_latents, one_step_latents, pipeline_rgb
 from .cls_noise import StepwiseCLSDirection
+from .cls_objective import cls_loss, cls_target, projection_diagnostics, validate_cls_loss
 
 
 def relative_rms(delta, reference_scale):
@@ -88,7 +88,9 @@ class CLSActivationGuidance:
                  resolution=(512, 512), optimization_space='activation', selection='best',
                  prediction_callback=None, block_mode='independent',
                  correction_scaling='rms', match_rms_adam=False, decode_mode='pipeline',
-                 first_update_probe=()):
+                 first_update_probe=(), cls_loss='shifted_cls'):
+        validate_cls_loss(cls_loss)
+        self.cls_loss = cls_loss
         if decode_mode not in ('pipeline', 'legacy_fp32_unclipped'):
             raise ValueError('decode_mode must be pipeline or legacy_fp32_unclipped')
         if (not isinstance(first_update_probe, (list, tuple)) or
@@ -305,11 +307,8 @@ class CLSActivationGuidance:
             direction = direction.to(source_cls.device)
             if direction.shape != source_cls.shape[-1:]:
                 raise ValueError('CLS direction must match DINO hidden size')
-            raw_target = source_cls - self.alpha * direction
-            if not torch.isfinite(raw_target).all() or (raw_target.norm(dim=-1) < 1e-8).any():
-                raise ValueError('Degenerate target CLS; reduce alpha')
-            target = F.normalize(raw_target, dim=-1).detach()
-            baseline_loss = float(.5 * (source_cls - target).square().sum(-1).mean())
+            target = cls_target(source_cls, direction, self.alpha, self.cls_loss)
+            baseline_loss = float(cls_loss(source_cls, target, direction, self.alpha, self.cls_loss))
             if self.prediction_callback is not None:
                 self.prediction_callback(step, 'before', self.decode_velocity(pipe, latents, baseline_velocity, sigma))
         selected_loss, selected_index = baseline_loss, 0
@@ -351,7 +350,7 @@ class CLSActivationGuidance:
                 with torch.no_grad():
                     image_stats = dict(decoded_out_of_range_fraction=float((decoded.abs() > 1).float().mean()),
                                        dino_rgb_min=float(rgb.min()), dino_rgb_max=float(rgb.max()))
-                semantic = .5 * (cls - target).square().sum(-1).mean()
+                semantic = cls_loss(cls, target, direction, self.alpha, self.cls_loss)
                 loss = semantic if self.preservation_weight == 0 else semantic + self.preservation_weight * preserve
                 yield loss, semantic, preserve, velocity, cls, actual_rms, block_rms, image_stats
 
@@ -378,6 +377,7 @@ class CLSActivationGuidance:
                     fp32_rms = {i: u.detach().square().mean((1, 2)).sqrt() *
                                 (scales[i] / reference_scales[i]).flatten() for i, u in corrections.items()}
                     entry = dict(step=step, iteration=iteration, **image_stats,
+                                      **projection_diagnostics(cls, source_cls, target, direction, self.alpha),
                                       semantic_loss=float(semantic.detach()), total_loss=value,
                                       preservation_loss=float(preserve.detach()), feasible=feasible,
                                       actual_relative_rms=actual_rms.detach().cpu().tolist(),
@@ -434,14 +434,15 @@ class CLSActivationGuidance:
                               preservation_weight=self.preservation_weight,
                               learning_rate=self.lr, iterations=self.iterations,
                               correction_scaling=self.correction_scaling, match_rms_adam=self.match_rms_adam,
-                              decode_mode=self.decode_mode,
+                              decode_mode=self.decode_mode, cls_loss=self.cls_loss,
                               direction_norm=direction_norm, vae_dtype=str(pipe.vae.dtype),
                               cls_dtype=str(selected_cls.dtype),
                               optimizer_groups=optimizer_groups,
                               sigma=float(sigma), model_tensor_dtype=str(model_dtype),
                               correction_dtype='torch.float32',
                               selected_relative_rms=selected_rms,
-                              final_semantic_loss=float(.5 * (selected_cls - target).square().sum(-1).mean()),
+                              final_semantic_loss=float(cls_loss(selected_cls, target, direction, self.alpha, self.cls_loss)),
+                              **projection_diagnostics(selected_cls, source_cls, target, direction, self.alpha),
                               velocity_relative_rms=relative_rms(selected_velocity.float() - baseline_velocity.float(),
                                   velocity_scale).cpu().tolist()))
         if self.joint:
@@ -451,6 +452,7 @@ class CLSActivationGuidance:
             with torch.no_grad():
                 self.prediction_callback(step, 'after', self.decode_velocity(pipe, latents, selected_velocity, sigma))
         self.references.append(dict(step=step, sigma=float(sigma), source_cls=source_cls.detach().cpu(),
+                                    cls_loss=self.cls_loss, alpha=self.alpha,
                                     target_cls=target.cpu(), selected_cls=selected_cls.detach().cpu(),
                                     direction=direction.detach().cpu()))
         # This is the velocity actually evaluated for the selected intervention.

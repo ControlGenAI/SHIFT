@@ -44,6 +44,23 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def load_image_dataset(root):
+    """Apply the same explicit screening exclusions to adapter and CLS inputs."""
+    root = Path(root)
+    data = json.loads((root / 'dataset.json').read_text())
+    path = root / 'excluded_pairs.json'
+    if path.exists():
+        ids = json.loads(path.read_text())['pair_ids']
+        if not isinstance(ids, list) or any(type(i) not in (str, int) for i in ids):
+            raise ValueError('excluded_pairs.json needs a list of pair IDs')
+        excluded = set(ids)
+        if excluded - {s['pair_id'] for s in data['samples']}:
+            raise ValueError('excluded_pairs.json lists pairs that are not in the dataset')
+        data['samples'] = [s for s in data['samples'] if s['pair_id'] not in excluded]
+        data['excluded_pair_ids'] = sorted(excluded, key=str)
+    return data
+
+
 def save_json(path, value):
     Path(path).write_text(json.dumps(value, indent=2, allow_nan=False) + '\n')
 

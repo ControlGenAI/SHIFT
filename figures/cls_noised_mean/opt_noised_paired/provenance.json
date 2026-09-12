@@ -1,0 +1,84 @@
+{
+  "direction_sha256": "bccc506e30567c88fa9dcb998662b3f107d1fc7b74bbc9d284b1ec48ee4b0195",
+  "direction_details": {
+    "kind": "noised_one_step",
+    "estimation": {
+      "steps": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "noise_repeats": 4,
+      "noise_seed": 120000,
+      "conditioning": "paired_prompts",
+      "preview_pairs": 2
+    },
+    "prediction_signature": {
+      "model": "black-forest-labs/FLUX.1-schnell",
+      "model_revision": "741f7c3ce8b383c54771c7003378a50191e9efe9",
+      "width": 512,
+      "height": 512,
+      "inference_steps": 4,
+      "guidance_scale": 0.0,
+      "model_dtype": "torch.bfloat16",
+      "vae_dtype": "torch.bfloat16",
+      "decode_mode": "pipeline",
+      "max_sequence_length": 256,
+      "vae_encoding": "posterior_mode",
+      "noise_mixing": "scheduler_scale_noise"
+    },
+    "steps": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "sigmas": [
+      1.0,
+      0.75,
+      0.5,
+      0.25
+    ],
+    "timesteps": [
+      1000.0,
+      750.0,
+      500.0,
+      250.0
+    ],
+    "norms": [
+      0.4227173626422882,
+      0.44581684470176697,
+      0.45609331130981445,
+      0.4593309164047241
+    ]
+  },
+  "cls_signature": {
+    "model": "facebook/dinov2-large",
+    "revision": "47b73eefe95e8d44ec3623f8890bd894b6ea2d6c",
+    "size": 448,
+    "preprocessing": "full_frame_bicubic_square_imagenet"
+  },
+  "torch_version": "2.6.0+cu118",
+  "diffusers_version": "0.38.0",
+  "transformers_version": "4.49.0",
+  "source_sha256": {
+    "src/models/flux.py": "860d1af804b06af2c768989aa13d763a712459d5adac3ccb1e958217769944d4",
+    "src/dino_adapter/cls_guidance.py": "c9d7b99f1da6cef61f967f1de26c4c0b6ec4f30acac11c017dbac8f0f37b4881",
+    "src/dino_adapter/cls_images.py": "f397af6c0f3e2cf4cc1c1ef2a2bcbfb29bfd756733326923c696be6ca61ee285",
+    "src/dino_adapter/cls_trajectory.py": "d7da03aca16b7d48c7b3fd500c20ba6bedccccca052e089b2f46c785214748e7",
+    "src/dino_adapter/cls_experiment.py": "a57e9854a79233536b107332451840a62391c9aca8b3bcec3d4984d1171f5953",
+    "src/dino_adapter/features.py": "61afc97ccc1cc40a821f3fc8e1b4467daed2cc5ea5b5834d09e50775215315c8",
+    "src/dino_adapter/runtime.py": "bc16b0aa7642f906eda9d699ce0d7449206bdc342019ccaa7d76a888a322a0bf",
+    "src/dino_adapter/cls_noise.py": "39c1712a78958ea4fff0ce68f44f14b57678ebbcea9e1c8c14f5a4e52149bbc8"
+  },
+  "model_dtype": "torch.bfloat16",
+  "vae_dtype": "torch.bfloat16",
+  "dino_dtype": "torch.float32",
+  "decode_mode": "pipeline",
+  "torch_cuda_version": "11.8",
+  "deterministic_algorithms": false,
+  "cudnn_deterministic": false,
+  "cudnn_benchmark": false,
+  "float32_matmul_precision": "highest"
+}

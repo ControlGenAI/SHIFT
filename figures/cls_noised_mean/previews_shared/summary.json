@@ -1,0 +1,36 @@
+{
+  "n_images": 400,
+  "n_train_pairs": 160,
+  "noise_repeats": 4,
+  "conditioning": "shared_prompt",
+  "levels": [
+    {
+      "step": 0,
+      "sigma": 1.0,
+      "timestep": 1000.0,
+      "direction_norm": 0.0,
+      "exact_zero": true
+    },
+    {
+      "step": 1,
+      "sigma": 0.75,
+      "timestep": 750.0,
+      "direction_norm": 0.43477877974510193,
+      "exact_zero": false
+    },
+    {
+      "step": 2,
+      "sigma": 0.5,
+      "timestep": 500.0,
+      "direction_norm": 0.4543076157569885,
+      "exact_zero": false
+    },
+    {
+      "step": 3,
+      "sigma": 0.25,
+      "timestep": 250.0,
+      "direction_norm": 0.4588426351547241,
+      "exact_zero": false
+    }
+  ]
+}

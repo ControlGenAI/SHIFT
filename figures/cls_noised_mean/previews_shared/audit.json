@@ -1,0 +1,96 @@
+{
+  "kind": "noised_one_step",
+  "levels": [
+    {
+      "step": 0,
+      "sigma": 1.0,
+      "direction_norm": 0.0,
+      "splits": {
+        "train": {
+          "n_positive": 160,
+          "n_negative": 160,
+          "auc": 0.5
+        },
+        "val": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 0.5
+        },
+        "test": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 0.5
+        }
+      }
+    },
+    {
+      "step": 1,
+      "sigma": 0.75,
+      "direction_norm": 0.43477877974510193,
+      "splits": {
+        "train": {
+          "n_positive": 160,
+          "n_negative": 160,
+          "auc": 0.998828113079071
+        },
+        "val": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        },
+        "test": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        }
+      }
+    },
+    {
+      "step": 2,
+      "sigma": 0.5,
+      "direction_norm": 0.4543076157569885,
+      "splits": {
+        "train": {
+          "n_positive": 160,
+          "n_negative": 160,
+          "auc": 1.0
+        },
+        "val": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        },
+        "test": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        }
+      }
+    },
+    {
+      "step": 3,
+      "sigma": 0.25,
+      "direction_norm": 0.4588426351547241,
+      "splits": {
+        "train": {
+          "n_positive": 160,
+          "n_negative": 160,
+          "auc": 1.0
+        },
+        "val": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        },
+        "test": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        }
+      }
+    }
+  ],
+  "note": "Scores average repeated normalized CLS per image. Separation is not evidence of successful editing.",
+  "direction_sha256": "ec03b5c62a6ebebbc71fca7f87757b3924637933fe5d54e8a2532e7ed97e6d4b",
+  "features_sha256": "dc5daeaaa315c0729abc3328de4250be119e17841c5857fc152e02b3fe1ddeda"
+}

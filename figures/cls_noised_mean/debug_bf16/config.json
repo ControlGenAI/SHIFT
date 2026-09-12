@@ -1,0 +1,44 @@
+{
+  "model": "black-forest-labs/FLUX.1-schnell",
+  "model_revision": "741f7c3ce8b383c54771c7003378a50191e9efe9",
+  "dino_model": "facebook/dinov2-large",
+  "dino_revision": "47b73eefe95e8d44ec3623f8890bd894b6ea2d6c",
+  "dino_size": 448,
+  "width": 512,
+  "height": 512,
+  "blocks": "all",
+  "inference_steps": 4,
+  "guidance_scale": 0.0,
+  "alphas": [
+    0.0,
+    0.5
+  ],
+  "cls_optimization": {
+    "objective": "one_step",
+    "space": "activation",
+    "block_mode": "joint",
+    "correction_scaling": "none",
+    "match_rms_adam": false,
+    "decode_mode": "pipeline",
+    "first_update_probe": [
+      -0.1,
+      -0.01,
+      -0.001,
+      0.0,
+      0.001,
+      0.01,
+      0.1,
+      1.0
+    ],
+    "steps": [
+      0
+    ],
+    "iterations": 1,
+    "learning_rate": 0.01,
+    "preservation_weight": 0.0,
+    "max_relative_rms": null,
+    "selection": "last",
+    "gradient_checkpointing": true,
+    "save_step_predictions": true
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "kind": "noised_one_step",
+  "levels": [
+    {
+      "step": 0,
+      "sigma": 1.0,
+      "direction_norm": 0.4227173626422882,
+      "splits": {
+        "train": {
+          "n_positive": 160,
+          "n_negative": 160,
+          "auc": 1.0
+        },
+        "val": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        },
+        "test": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        }
+      }
+    },
+    {
+      "step": 1,
+      "sigma": 0.75,
+      "direction_norm": 0.44581684470176697,
+      "splits": {
+        "train": {
+          "n_positive": 160,
+          "n_negative": 160,
+          "auc": 1.0
+        },
+        "val": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        },
+        "test": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        }
+      }
+    },
+    {
+      "step": 2,
+      "sigma": 0.5,
+      "direction_norm": 0.45609331130981445,
+      "splits": {
+        "train": {
+          "n_positive": 160,
+          "n_negative": 160,
+          "auc": 1.0
+        },
+        "val": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        },
+        "test": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        }
+      }
+    },
+    {
+      "step": 3,
+      "sigma": 0.25,
+      "direction_norm": 0.4593309164047241,
+      "splits": {
+        "train": {
+          "n_positive": 160,
+          "n_negative": 160,
+          "auc": 1.0
+        },
+        "val": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        },
+        "test": {
+          "n_positive": 20,
+          "n_negative": 20,
+          "auc": 1.0
+        }
+      }
+    }
+  ],
+  "note": "Scores average repeated normalized CLS per image. Separation is not evidence of successful editing.",
+  "direction_sha256": "bccc506e30567c88fa9dcb998662b3f107d1fc7b74bbc9d284b1ec48ee4b0195",
+  "features_sha256": "5a31b0c16d5730c2a607f097edd1b965044ff90db0a2f4438b7a1a41921e4b5f"
+}

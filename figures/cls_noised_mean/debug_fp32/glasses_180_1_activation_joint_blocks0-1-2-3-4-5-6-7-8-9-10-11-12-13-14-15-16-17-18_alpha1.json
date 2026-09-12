@@ -1,0 +1,1362 @@
+{
+  "sample": {
+    "id": "glasses_180_1",
+    "pair_id": "glasses_180",
+    "label": 1,
+    "split": "test",
+    "seed": 500180,
+    "prompt": "A bright daylight front-facing centered head-and-shoulders portrait photograph of a young man with loose curly black hair, neutral expression, looking straight at the camera, plain grey background, wearing thin gold round eyeglasses",
+    "image": "glasses_180_1/image.png",
+    "blocks": {
+      "0": "glasses_180_1/block_0.pt",
+      "1": "glasses_180_1/block_1.pt",
+      "2": "glasses_180_1/block_2.pt",
+      "3": "glasses_180_1/block_3.pt",
+      "4": "glasses_180_1/block_4.pt",
+      "5": "glasses_180_1/block_5.pt",
+      "6": "glasses_180_1/block_6.pt",
+      "7": "glasses_180_1/block_7.pt",
+      "8": "glasses_180_1/block_8.pt",
+      "9": "glasses_180_1/block_9.pt",
+      "10": "glasses_180_1/block_10.pt",
+      "11": "glasses_180_1/block_11.pt",
+      "12": "glasses_180_1/block_12.pt",
+      "13": "glasses_180_1/block_13.pt",
+      "14": "glasses_180_1/block_14.pt",
+      "15": "glasses_180_1/block_15.pt",
+      "16": "glasses_180_1/block_16.pt",
+      "17": "glasses_180_1/block_17.pt",
+      "18": "glasses_180_1/block_18.pt"
+    },
+    "features": "glasses_180_1/features.pt"
+  },
+  "block": null,
+  "blocks": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "block_mode": "joint",
+  "objective": "one_step",
+  "conditioning": "source",
+  "correction_scaling": "none",
+  "match_rms_adam": false,
+  "decode_mode": "pipeline",
+  "direction_kind": "clean_cls",
+  "generation_prompt": "A bright daylight front-facing centered head-and-shoulders portrait photograph of a young man with loose curly black hair, neutral expression, looking straight at the camera, plain grey background, wearing thin gold round eyeglasses",
+  "alpha": 0.5,
+  "space": "activation",
+  "logs": [
+    {
+      "step": 0,
+      "iteration": 0,
+      "decoded_out_of_range_fraction": 0.0012257894268259406,
+      "dino_rgb_min": 0.0,
+      "dino_rgb_max": 1.0,
+      "semantic_loss": 0.02654937282204628,
+      "total_loss": 0.02654937282204628,
+      "preservation_loss": 0.0,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0
+      ],
+      "fp32_relative_rms": [
+        0.0
+      ],
+      "velocity_relative_rms": [
+        0.0
+      ],
+      "per_block": [
+        {
+          "block": 0,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 6.59487777738832e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 1,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 4.179322058917023e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 2,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 2.2039699615561403e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 3,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 2.0024341210955754e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 4,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 1.8361120964982547e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 5,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 1.7863980247057043e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 6,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 1.7233784092240967e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 7,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 1.649834848649334e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 8,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 1.5059725228638854e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 9,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 1.425499067408964e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 10,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 1.3433686945063528e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 11,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 1.2012204933853354e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 12,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 1.0334759281249717e-05,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 13,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 9.233392120222561e-06,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 14,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 7.921627002360765e-06,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 15,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 6.696900072711287e-06,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 16,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 5.4970769269857556e-06,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 17,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 4.871330929745454e-06,
+          "gradient_nonzero": true,
+          "projected": false
+        },
+        {
+          "block": 18,
+          "actual_relative_rms": [
+            0.0
+          ],
+          "fp32_relative_rms": [
+            0.0
+          ],
+          "actual_absolute_rms": [
+            0.0
+          ],
+          "fp32_absolute_rms": [
+            0.0
+          ],
+          "gradient_rms": 4.078363417647779e-06,
+          "gradient_nonzero": true,
+          "projected": false
+        }
+      ],
+      "gradient_rms": 2.2163376343087293e-05,
+      "gradient_nonzero": true,
+      "projected": false
+    },
+    {
+      "step": 0,
+      "phase": "first_update_probe",
+      "multiplier": -0.1,
+      "total_loss": 0.051268838346004486,
+      "semantic_loss": 0.051268838346004486,
+      "observed_loss_delta": 0.024719465523958206,
+      "predicted_linear_loss_delta": 0.4961063332855702,
+      "actual_relative_rms": [
+        0.00016319745918735862
+      ],
+      "decoded_out_of_range_fraction": 0.0009613037109375,
+      "dino_rgb_min": 0.0,
+      "dino_rgb_max": 1.0,
+      "velocity_relative_rms": [
+        0.362864226102829
+      ]
+    },
+    {
+      "step": 0,
+      "phase": "first_update_probe",
+      "multiplier": -0.01,
+      "total_loss": 0.03712614253163338,
+      "semantic_loss": 0.03712614253163338,
+      "observed_loss_delta": 0.010576769709587097,
+      "predicted_linear_loss_delta": 0.049610633328557016,
+      "actual_relative_rms": [
+        1.6319756468874402e-05
+      ],
+      "decoded_out_of_range_fraction": 0.0012372335186228156,
+      "dino_rgb_min": 0.0,
+      "dino_rgb_max": 1.0,
+      "velocity_relative_rms": [
+        0.12773852050304413
+      ]
+    },
+    {
+      "step": 0,
+      "phase": "first_update_probe",
+      "multiplier": -0.001,
+      "total_loss": 0.026895519345998764,
+      "semantic_loss": 0.026895519345998764,
+      "observed_loss_delta": 0.00034614652395248413,
+      "predicted_linear_loss_delta": 0.004961063332855701,
+      "actual_relative_rms": [
+        1.6322454712280887e-06
+      ],
+      "decoded_out_of_range_fraction": 0.0012181600322946906,
+      "dino_rgb_min": 0.0,
+      "dino_rgb_max": 1.0,
+      "velocity_relative_rms": [
+        0.025023402646183968
+      ]
+    },
+    {
+      "step": 0,
+      "phase": "first_update_probe",
+      "multiplier": 0.0,
+      "total_loss": 0.02654937282204628,
+      "semantic_loss": 0.02654937282204628,
+      "observed_loss_delta": 0.0,
+      "predicted_linear_loss_delta": -0.0,
+      "actual_relative_rms": [
+        0.0
+      ],
+      "decoded_out_of_range_fraction": 0.0012257894268259406,
+      "dino_rgb_min": 0.0,
+      "dino_rgb_max": 1.0,
+      "velocity_relative_rms": [
+        0.0
+      ],
+      "repeat_gradients": [
+        {
+          "block": 0,
+          "relative_l2": 0.07542600482702255,
+          "cosine": 0.9971989989280701
+        },
+        {
+          "block": 1,
+          "relative_l2": 0.07772904634475708,
+          "cosine": 0.9970100522041321
+        },
+        {
+          "block": 2,
+          "relative_l2": 0.07705813646316528,
+          "cosine": 0.997035562992096
+        },
+        {
+          "block": 3,
+          "relative_l2": 0.07540298998355865,
+          "cosine": 0.9971654415130615
+        },
+        {
+          "block": 4,
+          "relative_l2": 0.07468584924936295,
+          "cosine": 0.9972222447395325
+        },
+        {
+          "block": 5,
+          "relative_l2": 0.07295975834131241,
+          "cosine": 0.9973604083061218
+        },
+        {
+          "block": 6,
+          "relative_l2": 0.07223153859376907,
+          "cosine": 0.9974194765090942
+        },
+        {
+          "block": 7,
+          "relative_l2": 0.06994924694299698,
+          "cosine": 0.9975953102111816
+        },
+        {
+          "block": 8,
+          "relative_l2": 0.06343838572502136,
+          "cosine": 0.998063325881958
+        },
+        {
+          "block": 9,
+          "relative_l2": 0.05846314877271652,
+          "cosine": 0.9983956813812256
+        },
+        {
+          "block": 10,
+          "relative_l2": 0.05753423646092415,
+          "cosine": 0.9984579086303711
+        },
+        {
+          "block": 11,
+          "relative_l2": 0.05836676061153412,
+          "cosine": 0.9984067678451538
+        },
+        {
+          "block": 12,
+          "relative_l2": 0.060015346854925156,
+          "cosine": 0.9982954859733582
+        },
+        {
+          "block": 13,
+          "relative_l2": 0.06066545099020004,
+          "cosine": 0.9982508420944214
+        },
+        {
+          "block": 14,
+          "relative_l2": 0.06142142415046692,
+          "cosine": 0.9982078075408936
+        },
+        {
+          "block": 15,
+          "relative_l2": 0.05952094495296478,
+          "cosine": 0.998326301574707
+        },
+        {
+          "block": 16,
+          "relative_l2": 0.058881208300590515,
+          "cosine": 0.9983488917350769
+        },
+        {
+          "block": 17,
+          "relative_l2": 0.056081417948007584,
+          "cosine": 0.9985018968582153
+        },
+        {
+          "block": 18,
+          "relative_l2": 0.05767066031694412,
+          "cosine": 0.9983934164047241
+        }
+      ]
+    },
+    {
+      "step": 0,
+      "phase": "first_update_probe",
+      "multiplier": 0.001,
+      "total_loss": 0.025018664076924324,
+      "semantic_loss": 0.025018664076924324,
+      "observed_loss_delta": -0.0015307087451219559,
+      "predicted_linear_loss_delta": -0.004961063332855701,
+      "actual_relative_rms": [
+        1.632245357541251e-06
+      ],
+      "decoded_out_of_range_fraction": 0.0012639363994821906,
+      "dino_rgb_min": 0.0,
+      "dino_rgb_max": 1.0,
+      "velocity_relative_rms": [
+        0.024750521406531334
+      ]
+    },
+    {
+      "step": 0,
+      "phase": "first_update_probe",
+      "multiplier": 0.01,
+      "total_loss": 0.03972290828824043,
+      "semantic_loss": 0.03972290828824043,
+      "observed_loss_delta": 0.013173535466194153,
+      "predicted_linear_loss_delta": -0.049610633328557016,
+      "actual_relative_rms": [
+        1.6319756468874402e-05
+      ],
+      "decoded_out_of_range_fraction": 0.001148223876953125,
+      "dino_rgb_min": 0.0,
+      "dino_rgb_max": 1.0,
+      "velocity_relative_rms": [
+        0.1293853372335434
+      ]
+    },
+    {
+      "step": 0,
+      "phase": "first_update_probe",
+      "multiplier": 0.1,
+      "total_loss": 0.06392942368984222,
+      "semantic_loss": 0.06392942368984222,
+      "observed_loss_delta": 0.037380050867795944,
+      "predicted_linear_loss_delta": -0.4961063332855702,
+      "actual_relative_rms": [
+        0.00016319745918735862
+      ],
+      "decoded_out_of_range_fraction": 0.001506805419921875,
+      "dino_rgb_min": 0.0,
+      "dino_rgb_max": 1.0,
+      "velocity_relative_rms": [
+        0.3457306921482086
+      ]
+    },
+    {
+      "step": 0,
+      "phase": "first_update_probe",
+      "multiplier": 1.0,
+      "total_loss": 0.09209439158439636,
+      "semantic_loss": 0.09209439158439636,
+      "observed_loss_delta": 0.06554501876235008,
+      "predicted_linear_loss_delta": -4.9610633328557014,
+      "actual_relative_rms": [
+        0.001631974708288908
+      ],
+      "decoded_out_of_range_fraction": 0.001537322998046875,
+      "dino_rgb_min": 0.0,
+      "dino_rgb_max": 1.0,
+      "velocity_relative_rms": [
+        0.5720665454864502
+      ]
+    },
+    {
+      "step": 0,
+      "iteration": 1,
+      "decoded_out_of_range_fraction": 0.001544952392578125,
+      "dino_rgb_min": 0.0,
+      "dino_rgb_max": 1.0,
+      "semantic_loss": 0.09209728986024857,
+      "total_loss": 0.09209728986024857,
+      "preservation_loss": 2.6633413199306233e-06,
+      "feasible": true,
+      "actual_relative_rms": [
+        0.0016319745918735862
+      ],
+      "fp32_relative_rms": [
+        0.001631974708288908
+      ],
+      "velocity_relative_rms": [
+        0.5720664858818054
+      ],
+      "per_block": [
+        {
+          "block": 0,
+          "actual_relative_rms": [
+            0.006701801437884569
+          ],
+          "fp32_relative_rms": [
+            0.0067018019035458565
+          ],
+          "actual_absolute_rms": [
+            0.009944724850356579
+          ],
+          "fp32_absolute_rms": [
+            0.009944724850356579
+          ]
+        },
+        {
+          "block": 1,
+          "actual_relative_rms": [
+            0.0011227999348193407
+          ],
+          "fp32_relative_rms": [
+            0.0011228000512346625
+          ],
+          "actual_absolute_rms": [
+            0.009937280789017677
+          ],
+          "fp32_absolute_rms": [
+            0.009937281720340252
+          ]
+        },
+        {
+          "block": 2,
+          "actual_relative_rms": [
+            0.0005784194800071418
+          ],
+          "fp32_relative_rms": [
+            0.0005784194217994809
+          ],
+          "actual_absolute_rms": [
+            0.00993123184889555
+          ],
+          "fp32_absolute_rms": [
+            0.009931230917572975
+          ]
+        },
+        {
+          "block": 3,
+          "actual_relative_rms": [
+            0.0005492751952260733
+          ],
+          "fp32_relative_rms": [
+            0.0005492752534337342
+          ],
+          "actual_absolute_rms": [
+            0.009928269311785698
+          ],
+          "fp32_absolute_rms": [
+            0.009928270243108273
+          ]
+        },
+        {
+          "block": 4,
+          "actual_relative_rms": [
+            0.0005431146710179746
+          ],
+          "fp32_relative_rms": [
+            0.0005431146710179746
+          ],
+          "actual_absolute_rms": [
+            0.009921304881572723
+          ],
+          "fp32_absolute_rms": [
+            0.009921304881572723
+          ]
+        },
+        {
+          "block": 5,
+          "actual_relative_rms": [
+            0.0005303216748870909
+          ],
+          "fp32_relative_rms": [
+            0.0005303217330947518
+          ],
+          "actual_absolute_rms": [
+            0.009918234311044216
+          ],
+          "fp32_absolute_rms": [
+            0.00991823524236679
+          ]
+        },
+        {
+          "block": 6,
+          "actual_relative_rms": [
+            0.0005266444059088826
+          ],
+          "fp32_relative_rms": [
+            0.0005266444059088826
+          ],
+          "actual_absolute_rms": [
+            0.00991423986852169
+          ],
+          "fp32_absolute_rms": [
+            0.00991423986852169
+          ]
+        },
+        {
+          "block": 7,
+          "actual_relative_rms": [
+            0.0005196290439926088
+          ],
+          "fp32_relative_rms": [
+            0.0005196291022002697
+          ],
+          "actual_absolute_rms": [
+            0.009907292202115059
+          ],
+          "fp32_absolute_rms": [
+            0.009907293133437634
+          ]
+        },
+        {
+          "block": 8,
+          "actual_relative_rms": [
+            0.0005220409366302192
+          ],
+          "fp32_relative_rms": [
+            0.0005220409366302192
+          ],
+          "actual_absolute_rms": [
+            0.009897492825984955
+          ],
+          "fp32_absolute_rms": [
+            0.009897492825984955
+          ]
+        },
+        {
+          "block": 9,
+          "actual_relative_rms": [
+            0.000528624455910176
+          ],
+          "fp32_relative_rms": [
+            0.000528624455910176
+          ],
+          "actual_absolute_rms": [
+            0.009891275316476822
+          ],
+          "fp32_absolute_rms": [
+            0.009891275316476822
+          ]
+        },
+        {
+          "block": 10,
+          "actual_relative_rms": [
+            0.0005266487132757902
+          ],
+          "fp32_relative_rms": [
+            0.0005266487132757902
+          ],
+          "actual_absolute_rms": [
+            0.009886140935122967
+          ],
+          "fp32_absolute_rms": [
+            0.009886140935122967
+          ]
+        },
+        {
+          "block": 11,
+          "actual_relative_rms": [
+            0.0005179455620236695
+          ],
+          "fp32_relative_rms": [
+            0.0005179456202313304
+          ],
+          "actual_absolute_rms": [
+            0.009877952747046947
+          ],
+          "fp32_absolute_rms": [
+            0.009877953678369522
+          ]
+        },
+        {
+          "block": 12,
+          "actual_relative_rms": [
+            0.0005059042014181614
+          ],
+          "fp32_relative_rms": [
+            0.0005059042014181614
+          ],
+          "actual_absolute_rms": [
+            0.009868469089269638
+          ],
+          "fp32_absolute_rms": [
+            0.009868469089269638
+          ]
+        },
+        {
+          "block": 13,
+          "actual_relative_rms": [
+            0.0005118075641803443
+          ],
+          "fp32_relative_rms": [
+            0.0005118075059726834
+          ],
+          "actual_absolute_rms": [
+            0.00985732115805149
+          ],
+          "fp32_absolute_rms": [
+            0.009857320226728916
+          ]
+        },
+        {
+          "block": 14,
+          "actual_relative_rms": [
+            0.000503534683957696
+          ],
+          "fp32_relative_rms": [
+            0.0005035347421653569
+          ],
+          "actual_absolute_rms": [
+            0.009838596917688847
+          ],
+          "fp32_absolute_rms": [
+            0.009838597849011421
+          ]
+        },
+        {
+          "block": 15,
+          "actual_relative_rms": [
+            0.0005084379808977246
+          ],
+          "fp32_relative_rms": [
+            0.0005084379808977246
+          ],
+          "actual_absolute_rms": [
+            0.009808860719203949
+          ],
+          "fp32_absolute_rms": [
+            0.009808860719203949
+          ]
+        },
+        {
+          "block": 16,
+          "actual_relative_rms": [
+            0.0004942560917697847
+          ],
+          "fp32_relative_rms": [
+            0.0004942561499774456
+          ],
+          "actual_absolute_rms": [
+            0.009782145731151104
+          ],
+          "fp32_absolute_rms": [
+            0.009782146662473679
+          ]
+        },
+        {
+          "block": 17,
+          "actual_relative_rms": [
+            0.0004554402839858085
+          ],
+          "fp32_relative_rms": [
+            0.00045544025488197803
+          ],
+          "actual_absolute_rms": [
+            0.009741654619574547
+          ],
+          "fp32_absolute_rms": [
+            0.009741653688251972
+          ]
+        },
+        {
+          "block": 18,
+          "actual_relative_rms": [
+            0.0002992462832480669
+          ],
+          "fp32_relative_rms": [
+            0.00029924625414423645
+          ],
+          "actual_absolute_rms": [
+            0.009692606516182423
+          ],
+          "fp32_absolute_rms": [
+            0.009692605584859848
+          ]
+        }
+      ]
+    },
+    {
+      "step": 0,
+      "selected_iteration": 1,
+      "baseline_semantic_loss": 0.02654937282204628,
+      "selected_total_loss": 0.09209728986024857,
+      "selection": "last",
+      "max_relative_rms": null,
+      "preservation_weight": 0.0,
+      "learning_rate": 0.01,
+      "iterations": 1,
+      "correction_scaling": "none",
+      "match_rms_adam": false,
+      "decode_mode": "pipeline",
+      "direction_norm": 0.45806267857551575,
+      "vae_dtype": "torch.float32",
+      "cls_dtype": "torch.float32",
+      "optimizer_groups": [
+        {
+          "block": 0,
+          "reference_rms": [
+            1.4838882684707642
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 1,
+          "reference_rms": [
+            8.850446701049805
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 2,
+          "reference_rms": [
+            17.169601440429688
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 3,
+          "reference_rms": [
+            18.075218200683594
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 4,
+          "reference_rms": [
+            18.26742172241211
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 5,
+          "reference_rms": [
+            18.702299118041992
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 6,
+          "reference_rms": [
+            18.825302124023438
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 7,
+          "reference_rms": [
+            19.066085815429688
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 8,
+          "reference_rms": [
+            18.959226608276367
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 9,
+          "reference_rms": [
+            18.711345672607422
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 10,
+          "reference_rms": [
+            18.771793365478516
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 11,
+          "reference_rms": [
+            19.0714111328125
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 12,
+          "reference_rms": [
+            19.506595611572266
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 13,
+          "reference_rms": [
+            19.25981903076172
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 14,
+          "reference_rms": [
+            19.539064407348633
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 15,
+          "reference_rms": [
+            19.29214859008789
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 16,
+          "reference_rms": [
+            19.791654586791992
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 17,
+          "reference_rms": [
+            21.3895320892334
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        },
+        {
+          "block": 18,
+          "reference_rms": [
+            32.39006423950195
+          ],
+          "correction_scale": [
+            1.0
+          ],
+          "learning_rate": 0.01,
+          "epsilon": 1e-08
+        }
+      ],
+      "sigma": 1.0,
+      "model_tensor_dtype": "torch.float32",
+      "correction_dtype": "torch.float32",
+      "selected_relative_rms": [
+        0.0016319745918735862
+      ],
+      "final_semantic_loss": 0.09209728986024857,
+      "velocity_relative_rms": [
+        0.5720664858818054
+      ],
+      "block_mode": "joint",
+      "blocks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "selected_per_block": [
+        {
+          "block": 0,
+          "selected_relative_rms": [
+            0.006701801437884569
+          ]
+        },
+        {
+          "block": 1,
+          "selected_relative_rms": [
+            0.0011227999348193407
+          ]
+        },
+        {
+          "block": 2,
+          "selected_relative_rms": [
+            0.0005784194800071418
+          ]
+        },
+        {
+          "block": 3,
+          "selected_relative_rms": [
+            0.0005492751952260733
+          ]
+        },
+        {
+          "block": 4,
+          "selected_relative_rms": [
+            0.0005431146710179746
+          ]
+        },
+        {
+          "block": 5,
+          "selected_relative_rms": [
+            0.0005303216748870909
+          ]
+        },
+        {
+          "block": 6,
+          "selected_relative_rms": [
+            0.0005266444059088826
+          ]
+        },
+        {
+          "block": 7,
+          "selected_relative_rms": [
+            0.0005196290439926088
+          ]
+        },
+        {
+          "block": 8,
+          "selected_relative_rms": [
+            0.0005220409366302192
+          ]
+        },
+        {
+          "block": 9,
+          "selected_relative_rms": [
+            0.000528624455910176
+          ]
+        },
+        {
+          "block": 10,
+          "selected_relative_rms": [
+            0.0005266487132757902
+          ]
+        },
+        {
+          "block": 11,
+          "selected_relative_rms": [
+            0.0005179455620236695
+          ]
+        },
+        {
+          "block": 12,
+          "selected_relative_rms": [
+            0.0005059042014181614
+          ]
+        },
+        {
+          "block": 13,
+          "selected_relative_rms": [
+            0.0005118075641803443
+          ]
+        },
+        {
+          "block": 14,
+          "selected_relative_rms": [
+            0.000503534683957696
+          ]
+        },
+        {
+          "block": 15,
+          "selected_relative_rms": [
+            0.0005084379808977246
+          ]
+        },
+        {
+          "block": 16,
+          "selected_relative_rms": [
+            0.0004942560917697847
+          ]
+        },
+        {
+          "block": 17,
+          "selected_relative_rms": [
+            0.0004554402839858085
+          ]
+        },
+        {
+          "block": 18,
+          "selected_relative_rms": [
+            0.0002992462832480669
+          ]
+        }
+      ]
+    }
+  ],
+  "final_cls_removal_proxy": -0.2070692777633667,
+  "removal_proxy_basis": "clean_cls_mean_diff",
+  "baseline_pixel_mae": 31.31578254699707,
+  "baseline_pixel_max_abs": 249.0
+}

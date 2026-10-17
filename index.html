@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SHIFT: Steering Hidden Intermediates in Flow Transformers</title>
+  <meta name="description" content="SHIFT is a model-weight-update-free, inference-time activation steering framework for concept suppression and manipulation in MM-DiT models such as FLUX.1. WACV 2027.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="SHIFT: Steering Hidden Intermediates in Flow Transformers">
+  <meta property="og:description" content="Inference-time concept suppression in FLUX.1 by steering post-block text states of double-stream blocks. No weight updates. WACV 2027.">
+  <meta property="og:image" content="https://controlgenai.github.io/SHIFT/static/images/teaser.jpg">
+  <meta property="og:url" content="https://controlgenai.github.io/SHIFT/">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/academicons/1.9.4/css/academicons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="static/css/style.css">
+
+  <script>
+    // Apply a saved theme choice before first paint (falls back to the OS setting).
+    try {
+      var t = localStorage.getItem("shift-theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters: [{left: '\\[', right: '\\]', display: true}, {left: '\\(', right: '\\)', display: false}]});"></script>
+</head>
+
+<body>
+
+<header class="topbar">
+  <div class="container">
+    <a class="brand" href="#top">SHIFT</a>
+    <nav aria-label="Sections">
+      <a href="#abstract">Abstract</a>
+      <a href="#method">Method</a>
+      <a href="#findings">Findings</a>
+      <a href="#results">Results</a>
+      <a href="#analysis">Analysis</a>
+      <a href="#bibtex">BibTeX</a>
+    </nav>
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
+      <i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- ======================================================================
+     HERO
+====================================================================== -->
+<div class="hero">
+  <div class="container">
+    <h1>SHIFT: Steering Hidden Intermediates in Flow Transformers</h1>
+
+    <p class="authors">
+      <span class="author">Nina Konovalova<sup>1</sup></span>
+      <span class="author">Ibragim Idrisov<sup>2</sup></span>
+      <span class="author">Aibek Alanov<sup>3</sup></span>
+    </p>
+    <p class="affils">
+      <span><sup>1</sup>MBZUAI</span>
+      <span><sup>2</sup>Lomonosov Moscow State University</span>
+      <span><sup>3</sup>HSE University, FusionBrain Lab</span>
+    </p>
+    <div class="venue">WACV 2027</div>
+
+    <div class="links">
+      <!-- PAPER / ARXIV LINKS GO HERE: to enable a button, add href="<URL>" to the <a>,
+           and remove class "is-disabled", aria-disabled="true", tabindex="-1" and the "coming soon" span. -->
+      <a class="btn is-disabled" aria-disabled="true" tabindex="-1">
+        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i><span>Paper</span><span class="soon">(coming soon)</span>
+      </a>
+      <a class="btn is-disabled" aria-disabled="true" tabindex="-1">
+        <i class="ai ai-arxiv" aria-hidden="true"></i><span>arXiv</span><span class="soon">(coming soon)</span>
+      </a>
+      <a class="btn" href="https://github.com/ControlGenAI/SHIFT">
+        <i class="fa-brands fa-github" aria-hidden="true"></i><span>Code</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     TL;DR + TEASER
+====================================================================== -->
+<section style="padding-top: 8px;">
+  <div class="container">
+    <div class="tldr">
+      SHIFT suppresses unwanted concepts in FLUX.1 at inference time by adding a
+      contrastive steering direction to the <em>post-block text states</em> of the double-stream blocks,
+      gated by how relevant the concept is to the prompt. No diffusion-model weights are updated, one
+      step-0 vector is reused for every denoising step, and vectors computed on the distilled
+      FLUX.1[schnell] transfer directly to FLUX.1[dev].
+    </div>
+
+    <figure class="paper">
+      <a href="static/images/teaser.jpg"><img src="static/images/teaser.jpg" width="2720" height="1216"
+        alt="Before and after pairs: glasses and a hat removed on Flux.1[schnell], nudity erased on Flux.1[schnell] (original censored), Snoopy erased while Pikachu is preserved on Flux.1[dev], and Van Gogh style erased on Flux.1[dev]."></a>
+      <figcaption>One mechanism, many edits. Each pair shows the unsteered generation and SHIFT with the same prompt and seed.
+        * Flux.1[dev] steered with the vector computed on Flux.1[schnell]. Explicit regions are censored as in the paper.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================================================================
+     ABSTRACT
+====================================================================== -->
+<section id="abstract" class="alt">
+  <div class="container">
+    <h2>Abstract</h2>
+    <p class="justify">
+      Diffusion models have become the leading approach for high-fidelity image generation, with recent DiT-based
+      models achieving strong prompt adherence and high visual quality. However, removing unwanted concepts from
+      these models typically requires expensive gradient-based fine-tuning, which is particularly prohibitive for
+      multi-billion-parameter Diffusion Transformers and incompatible with distilled variants. We propose SHIFT, a
+      simple model-weight-update-free inference-time framework for concept suppression in DiT models via targeted
+      manipulation of intermediate activations at inference time, inspired by activation steering in LLMs. SHIFT
+      learns steering vectors from contrastive prompts and applies them dynamically. We demonstrate that a single
+      time-independent steering vector generalizes across all denoising timesteps and that vectors computed on a
+      distilled model transfer effectively to its non-distilled counterpart without recomputation. SHIFT achieves
+      strong concept suppression while preserving prompt fidelity and image quality. The same mechanism also
+      enables flexible control &mdash; adding, removing, or changing objects and styles without retraining. SHIFT
+      targets hosted inference settings: it does not remove the concept from the model weights and is therefore
+      complementary to weight-level unlearning.
+    </p>
+  </div>
+</section>
+
+<!-- ======================================================================
+     METHOD
+====================================================================== -->
+<section id="method">
+  <div class="container">
+    <h2>Method</h2>
+
+    <figure class="paper">
+      <a href="static/images/main_scheme.png"><img src="static/images/main_scheme.png" width="2000" height="1032" loading="lazy"
+        alt="SHIFT pipeline: (1) dataset construction from contrastive prompt pairs, (2) steering vector computation, (3) application at inference, (4) steering inside the diffusion transformer block."></a>
+      <figcaption>Overview of the steering pipeline: (1) dataset construction from contrastive prompt pairs, (2) steering
+        vector computation based on mean difference and separation plane, (3) application of the vector during inference,
+        and (4) steering inside the diffusion transformer.</figcaption>
+    </figure>
+
+    <h3>Where to steer: the post-block text state</h3>
+    <p>
+      In a FLUX double-stream block, text and image tokens are separate residual streams that interact through joint
+      attention: \(X_t^{\ell+1} = X_t^{\ell} + R_{t,\ell}(X_t^{\ell}, X_i^{\ell}; e_\tau)\). Steering only the residual
+      branch \(R_t\) by its exact source-to-target difference still leaves a mismatch, because the source-conditioned
+      stream survives in the skip connection:
+    </p>
+    <div class="eq">\[ X_t^{\ell+1,+} - \widetilde X_t^{\ell+1} = X_t^{+} - X_t^{-}. \]</div>
+    <p>
+      Steering the post-block state \(X_t^{\ell+1}\) instead reconstructs the target activation exactly for a single
+      contrastive pair, and with a mean direction over many pairs it performs approximate transport toward the
+      concept-free region. Block outputs are also a standard interface across residual transformers, which makes the
+      choice architecture-agnostic. As a complementary pathway, SHIFT also steers the pooled text embedding that forms the
+      global modulation vector \(e_\tau\).
+    </p>
+
+    <figure class="paper narrow">
+      <a href="static/images/double_stream.png"><img src="static/images/double_stream.png" width="2000" height="550" loading="lazy"
+        alt="Diagram of a Flux.1 double-stream transformer block with the steering applied to the text-stream output."></a>
+      <figcaption>Double-stream transformer block and the applied steering for Flux.1.</figcaption>
+    </figure>
+
+    <h3>Steering vectors</h3>
+    <p>
+      For each concept we record activations for \(n\) prompt pairs \((p_k^-, p_k^+)\), where \(p_k^+\) inserts the concept
+      into an otherwise neutral prompt (e.g. &ldquo;an elephant&rdquo; vs. &ldquo;an elephant in cyberpunk style&rdquo;), using the same
+      seed for both. The per-token steering field is the mean difference, normalized per token:
+    </p>
+    <div class="eq">\[ \Delta X_{\ell} = \frac{1}{n}\sum_{k=1}^{n}\left(X_{k,\ell}^{+} - X_{k,\ell}^{-}\right) \in \mathbb{R}^{T\times C},
+      \qquad v_{\ell,j} = \frac{\Delta X_{\ell,j}}{\lVert \Delta X_{\ell,j}\rVert_2 + \varepsilon}. \]</div>
+    <p>
+      The field is computed only at the first denoising step and reused for all steps. At inference,
+      \(\tilde X = X \pm \alpha\, v\), with \(-\) for suppression and \(+\) for addition. For the pooled text-encoder
+      route we use the raw activation difference.
+    </p>
+
+    <h3>A shared cosine gate</h3>
+    <p>
+      Both routes are modulated by the same prompt-dependent cosine, which measures how relevant the target concept is
+      to the current prompt. The text route clips it to [0, 1], the diffusion-transformer route to [0, &delta;]:
+    </p>
+    <div class="eq">\[ \alpha_\text{pool} = \gamma_\text{pool}\, \operatorname{clip}\big(\cos\langle e_\text{init}, e_\text{target}\rangle,\, 0,\, 1\big),
+      \qquad \alpha_\text{diff} = \gamma_\text{diff}\, \eta_\text{cls}\, c,
+      \qquad c = \operatorname{clip}\big(\cos\langle e_\text{init}, e_\text{target}\rangle,\, 0,\, \delta\big), \]</div>
+    <p>
+      where \(\eta_\text{cls} = \operatorname{clip}\big(\tfrac{1}{(1-p_\text{cls})+\varepsilon} - 1,\, 0,\, \eta_\text{max}\big)\) comes
+      from a linear SVM fitted on token-mean activations of the same pairs, which estimates whether the concept is still
+      present at the steered site. Steering vanishes when the concept is already weak or the prompt is unrelated. The gate is
+      what lets several concepts be erased at once: each steering field keeps its own gate and activates only on its
+      relevant prompts.
+    </p>
+  </div>
+</section>
+
+<!-- ======================================================================
+     KEY FINDINGS
+====================================================================== -->
+<section id="findings" class="alt">
+  <div class="container">
+    <h2>Key findings</h2>
+    <div class="cards">
+      <div class="card">
+        <h4><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> Temporal invariance</h4>
+        <p>A single steering vector computed at the <strong>first denoising step</strong> performs on par with per-step
+          adaptation, so there is no per-step storage or recomputation.</p>
+      </div>
+      <div class="card">
+        <h4><i class="fa-solid fa-right-left" aria-hidden="true"></i> Cross-distillation transfer</h4>
+        <p>Vectors from the distilled <strong>FLUX.1[schnell]</strong> steer <strong>FLUX.1[dev]</strong> zero-shot:
+          156 vs. 152 I2P detections with dev's own activations (605 unsteered). Per-block cosine of the two nudity directions is 0.709 on average.</p>
+      </div>
+      <div class="card">
+        <h4><i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i> Intervention site</h4>
+        <p>Post-block text states reach comparable or stronger suppression than steering the joint-attention output
+          \(Y_t\), with <strong>less degradation of non-target concepts</strong>.</p>
+      </div>
+      <div class="card">
+        <h4><i class="fa-solid fa-filter" aria-hidden="true"></i> Prompt-selective gate</h4>
+        <p>On MS-COCO the median effective strength is <strong>zero for four of the seven</strong> I2P concepts, with the gate
+          fully closed on 43.9&ndash;77.0% of captions, so strength is spent only where the concept is present.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     RESULTS
+====================================================================== -->
+<section id="results">
+  <div class="container">
+    <h2>Results</h2>
+
+    <!-- ---------------- Nudity ---------------- -->
+    <h3>Abstract concept erasure: nudity on I2P</h3>
+    <p>
+      I2P contains 4,703 prompts designed to elicit inappropriate generations. We count exposed body parts with NudeNet
+      (threshold 0.6) at 512&times;512, and measure image quality on 5,000 MS-COCO captions.
+    </p>
+    <p class="note"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+      Content note: the qualitative nudity figures show I2P generations; explicit regions are masked with red boxes, as in the paper.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr class="group"><th rowspan="2">Method</th><th colspan="4">Detected nudity (quantity)</th><th colspan="2">MS-COCO 5K</th></tr>
+          <tr><th>Common</th><th>Female</th><th>Male</th><th>Total &darr;</th><th>FID &darr;</th><th>CLIP &uarr;</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ESD</td><td>280</td><td>121</td><td>25</td><td>426</td><td>31.88</td><td>30.86</td></tr>
+          <tr><td>EAP</td><td>373</td><td>175</td><td>10</td><td>558</td><td>32.02</td><td><u>31.51</u></td></tr>
+          <tr><td>CA</td><td>234</td><td>98</td><td>10</td><td>342</td><td>31.81</td><td>31.25</td></tr>
+          <tr><td>UCE</td><td>232</td><td>127</td><td><b>5</b></td><td>364</td><td><b>31.65</b></td><td><b>31.55</b></td></tr>
+          <tr><td>EraseAnything</td><td>281</td><td>121</td><td><u>6</u></td><td>408</td><td>32.89</td><td>31.35</td></tr>
+          <tr class="ours"><td>SHIFT (γ=225)</td><td><u>83</u></td><td><u>33</u></td><td>8</td><td><u>124</u></td><td><u>31.80</u></td><td><u>31.51</u></td></tr>
+          <tr class="ours"><td>SHIFT (γ=250)</td><td><b>71</b></td><td><b>22</b></td><td>12</td><td><b>105</b></td><td>31.91</td><td>31.50</td></tr>
+          <tr class="base sep"><td>Flux.1[schnell]</td><td>412</td><td>190</td><td>10</td><td>612</td><td>31.63</td><td>31.59</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-caption">Flux.1[schnell]: NudeNet detections on I2P (left) and FID / CLIP on MS-COCO 5K (right). Best in bold, second underlined.</p>
+
+    <figure class="paper narrow">
+      <a href="static/images/nudity_schnell.jpg"><img src="static/images/nudity_schnell.jpg" width="2000" height="1876" loading="lazy"
+        alt="Grid of I2P generations on Flux.1[schnell]: rows are the original model, UCE, CA and SHIFT; explicit regions are masked with red boxes."></a>
+      <figcaption>Qualitative comparison with baselines on Flux.1[schnell]. Rows from top to bottom: original generation, UCE, CA, and SHIFT.</figcaption>
+    </figure>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr class="group"><th rowspan="2">Method</th><th colspan="4">Detected nudity (quantity)</th></tr>
+          <tr><th>Common</th><th>Female</th><th>Male</th><th>Total &darr;</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>CA</td><td>253</td><td>65</td><td>26</td><td>344</td></tr>
+          <tr><td>ESD</td><td>329</td><td>145</td><td>32</td><td>506</td></tr>
+          <tr><td>UCE</td><td>122</td><td>39</td><td><b>12</b></td><td>173</td></tr>
+          <tr><td>MACE</td><td>173</td><td>55</td><td>28</td><td>256</td></tr>
+          <tr><td>EAP</td><td>287</td><td>86</td><td><u>13</u></td><td>386</td></tr>
+          <tr><td>Meta-Unlearning</td><td>355</td><td>140</td><td>26</td><td>521</td></tr>
+          <tr><td>EraseAnything</td><td>129</td><td>48</td><td>22</td><td>199</td></tr>
+          <tr class="ours"><td>SHIFT (dev acts)</td><td><u>118</u></td><td><b>20</b></td><td>14</td><td><b>152</b></td></tr>
+          <tr class="ours"><td>SHIFT (schnell acts)</td><td><b>117</b></td><td><u>25</u></td><td>14</td><td><u>156</u></td></tr>
+          <tr class="base sep"><td>Flux.1[dev]</td><td>406</td><td>161</td><td>38</td><td>605</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-caption">Flux.1[dev]: NudeNet detections on I2P. Baseline numbers are reported from EraseAnything. &ldquo;schnell acts&rdquo; uses a steering
+      vector computed only from Flux.1[schnell] activations.</p>
+
+    <figure class="paper narrow">
+      <a href="static/images/nudity_dev.jpg"><img src="static/images/nudity_dev.jpg" width="2000" height="1901" loading="lazy"
+        alt="Grid of I2P generations on Flux.1[dev]: original model, SHIFT with the schnell-derived vector, and SHIFT with dev's own vector; explicit regions in the original row are masked."></a>
+      <figcaption>Flux.1[dev] original and steered generation. * denotes that we use a steering vector from Flux.1[schnell] activations to steer Flux.1[dev].</figcaption>
+    </figure>
+
+    <!-- ---------------- Multi-concept ---------------- -->
+    <h3>Multi-concept erasure</h3>
+    <p>
+      A practical safety filter must suppress many concepts at once. SHIFT erases the seven inappropriate I2P categories
+      jointly by summing their per-block steering fields, each modulated by its own cosine gate. Inappropriate content is
+      detected with Q16 (an image is also counted if any exposed NudeNet class fires).
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr class="group"><th rowspan="2">Class</th><th colspan="3">Inappropriate proportion (%) &darr;</th></tr>
+          <tr><th>Flux.1[schnell]</th><th>EraseAnything</th><th>SHIFT (γ=225)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Hate</td><td>33.77</td><td>28.57</td><td><b>8.37</b></td></tr>
+          <tr><td>Harassment</td><td>32.40</td><td>25.97</td><td><b>8.28</b></td></tr>
+          <tr><td>Violence</td><td>35.98</td><td>29.50</td><td><b>7.68</b></td></tr>
+          <tr><td>Self-harm</td><td>41.45</td><td>31.96</td><td><b>16.54</b></td></tr>
+          <tr><td>Sexual</td><td>50.70</td><td>41.57</td><td><b>20.78</b></td></tr>
+          <tr><td>Shocking</td><td>47.90</td><td>39.95</td><td><b>15.45</b></td></tr>
+          <tr><td>Illegal activity</td><td>34.39</td><td>30.54</td><td><b>12.29</b></td></tr>
+          <tr class="ours sep"><td>Overall</td><td>40.63</td><td>33.66</td><td><b>14.04</b></td></tr>
+          <tr class="sep"><td>FID &darr; (COCO 5K)</td><td>31.63</td><td>32.76</td><td><b>30.44</b></td></tr>
+          <tr><td>CLIP &uarr; (COCO 5K)</td><td><b>31.59</b></td><td>31.21</td><td>30.75</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-caption">Inappropriate content removal on I2P with Flux.1[schnell], detected by the Q16 classifier.</p>
+
+    <!-- ---------------- Concrete ---------------- -->
+    <h3>Concrete concept erasure: Snoopy</h3>
+    <p>
+      Following the SPM protocol (80 prompts &times; 9 seeds), we erase Snoopy while preserving Mickey, Spongebob, Pikachu,
+      dog and legislator. CLIP score (CS) should drop for the target and stay high for the preserved concepts; FID is measured
+      against the original generations.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr class="group"><th rowspan="2">Method</th><th colspan="2">Snoopy</th><th colspan="2">Mickey</th><th colspan="2">Spongebob</th><th colspan="2">Pikachu</th><th colspan="2">Dog</th><th colspan="2">Legislator</th></tr>
+          <tr><th>CS &darr;</th><th>FID</th><th>CS &uarr;</th><th>FID &darr;</th><th>CS &uarr;</th><th>FID &darr;</th><th>CS &uarr;</th><th>FID &darr;</th><th>CS &uarr;</th><th>FID &darr;</th><th>CS &uarr;</th><th>FID &darr;</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>CA</td><td>22.49</td><td>168.37</td><td>24.25</td><td>129.91</td><td><b>28.25</b></td><td>131.78</td><td><b>27.44</b></td><td>129.54</td><td>22.86</td><td>96.94</td><td>21.18</td><td>83.83</td></tr>
+          <tr class="ours"><td>SHIFT (γ=225)</td><td>15.02</td><td>259.08</td><td><b>25.63</b></td><td><b>70.60</b></td><td>27.40</td><td>75.63</td><td>27.03</td><td><b>53.99</b></td><td><b>24.47</b></td><td>64.91</td><td><b>21.28</b></td><td><b>56.63</b></td></tr>
+          <tr class="ours"><td>SHIFT (γ=250)</td><td><b>14.38</b></td><td>281.33</td><td>25.46</td><td>72.23</td><td>27.34</td><td><b>74.85</b></td><td>27.00</td><td>54.12</td><td>24.36</td><td><b>64.88</b></td><td><b>21.28</b></td><td><b>56.63</b></td></tr>
+          <tr class="base sep"><td>Flux.1[schnell]</td><td>28.01</td><td>&ndash;</td><td>26.72</td><td>&ndash;</td><td>27.94</td><td>&ndash;</td><td>27.15</td><td>&ndash;</td><td>24.62</td><td>&ndash;</td><td>21.89</td><td>&ndash;</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-caption">Concrete object erasure on Flux.1[schnell]. Results for Flux.1[dev] are in the paper's appendix.</p>
+    <figure class="paper">
+      <a href="static/images/concrete.jpg"><img src="static/images/concrete.jpg" width="2000" height="616" loading="lazy"
+        alt="Snoopy erasure: Flux.1[dev] with ESD and SHIFT on the left, Flux.1[schnell] with CA and SHIFT on the right. Pikachu is preserved while Snoopy is replaced by a statue."></a>
+      <figcaption>Snoopy is erased while the related concept Pikachu is preserved, on Flux.1[dev] (left, against ESD) and
+        Flux.1[schnell] (right, against CA). * denotes steering Flux.1[dev] with the vector computed from Flux.1[schnell] activations.</figcaption>
+    </figure>
+
+    <!-- ---------------- Small objects ---------------- -->
+    <h3>Small object removal</h3>
+    <p>
+      SHIFT also suppresses small local objects (glasses, hats, smiles) on Flux.1[schnell] with 4 steps. &ldquo;%&rdquo; is the
+      mean fraction of images judged to contain the object by two blind annotators (120 images per concept). SHIFT redirects the
+      model's generation trajectory; it is not a localized editing method and does not preserve pixel-level layouts.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr class="group"><th rowspan="2">Method</th><th colspan="3">Glasses</th><th colspan="3">Hat</th><th colspan="3">Smile</th></tr>
+          <tr><th>% &darr;</th><th>FID &darr;</th><th>CS &uarr;</th><th>% &darr;</th><th>FID &darr;</th><th>CS &uarr;</th><th>% &darr;</th><th>FID &darr;</th><th>CS &uarr;</th></tr>
+        </thead>
+        <tbody>
+          <tr class="ours"><td>SHIFT (γ=10)</td><td>86.3</td><td>57.27</td><td>30.77</td><td>82.6</td><td>50.08</td><td>31.62</td><td>69.6</td><td>58.95</td><td>31.38</td></tr>
+          <tr class="ours"><td>SHIFT (γ=20)</td><td>78.9</td><td>76.70</td><td>31.03</td><td>71.5</td><td>68.55</td><td>31.80</td><td>65.9</td><td>77.16</td><td>31.40</td></tr>
+          <tr class="ours"><td>SHIFT (γ=30)</td><td>52.2</td><td>104.10</td><td><b>31.30</b></td><td>47.8</td><td>87.03</td><td><b>31.96</b></td><td>47.4</td><td>93.97</td><td><b>31.52</b></td></tr>
+          <tr class="base sep"><td>Flux.1[schnell]</td><td>93.2</td><td>&ndash;</td><td>30.74</td><td>90.0</td><td>&ndash;</td><td>31.52</td><td>71.8</td><td>&ndash;</td><td>31.26</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-caption">Remove-task steering on Flux.1[schnell].</p>
+
+    <div class="tabs" role="tablist" aria-label="Small object removal examples">
+      <button class="tab" type="button" role="tab" aria-selected="true" aria-controls="panel-glasses" id="tab-glasses">Glasses</button>
+      <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="panel-hat" id="tab-hat">Hat</button>
+      <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="panel-smile" id="tab-smile">Smile</button>
+    </div>
+    <div class="tab-panel" role="tabpanel" id="panel-glasses" aria-labelledby="tab-glasses">
+      <figure class="paper">
+        <a href="static/images/remove_glasses.jpg"><img src="static/images/remove_glasses.jpg" width="2000" height="741" loading="lazy"
+          alt="Top row: original Flux.1[schnell] generations of people and a snake wearing glasses; bottom row: the same prompts steered so that the glasses disappear."></a>
+        <figcaption>Steering to remove small concepts: glasses.</figcaption>
+      </figure>
+    </div>
+    <div class="tab-panel" role="tabpanel" id="panel-hat" aria-labelledby="tab-hat" hidden>
+      <figure class="paper">
+        <a href="static/images/remove_hat.jpg"><img src="static/images/remove_hat.jpg" width="2000" height="741" loading="lazy"
+          alt="Top row: original generations with hats; bottom row: steered generations without hats."></a>
+        <figcaption>Steering to remove small concepts: hat.</figcaption>
+      </figure>
+    </div>
+    <div class="tab-panel" role="tabpanel" id="panel-smile" aria-labelledby="tab-smile" hidden>
+      <figure class="paper">
+        <a href="static/images/remove_smile.jpg"><img src="static/images/remove_smile.jpg" width="2000" height="741" loading="lazy"
+          alt="Top row: original generations of smiling people; bottom row: steered generations with neutral expressions."></a>
+        <figcaption>Steering to remove small concepts: smile.</figcaption>
+      </figure>
+    </div>
+
+    <!-- ---------------- Style ---------------- -->
+    <h3>Style erasure</h3>
+    <p>
+      We remove a target artist's style (Van Gogh; Kelly McKernan) while preserving visually similar artists. Because styles
+      are densely packed in embedding space, the style gate adds a hard cut-off \(\delta_1\): prompts with raw cosine below
+      \(\delta_1\) are not steered at all (\(\delta_1 = 0.2,\ \delta = 0.5\)). Accuracy is the rate at which GPT-4o recognizes the artist.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr class="group"><th rowspan="2">Method</th><th colspan="2">Old artists</th><th colspan="2">Modern artists</th></tr>
+          <tr><th>Acc<sub>E</sub> &darr;</th><th>Acc<sub>U</sub> &uarr;</th><th>Acc<sub>E</sub> &darr;</th><th>Acc<sub>U</sub> &uarr;</th></tr>
+        </thead>
+        <tbody>
+          <tr class="subhead"><td colspan="5">Flux.1[dev]</td></tr>
+          <tr><td>ESD</td><td>20.00%</td><td>63.75%</td><td>68.33%</td><td>67.08%</td></tr>
+          <tr class="ours"><td>SHIFT [dev]</td><td><b>10.00%</b></td><td><b>76.25%</b></td><td><b>31.67%</b></td><td><b>68.33%</b></td></tr>
+          <tr class="ours"><td>SHIFT [schnell]</td><td>20.00%</td><td><b>76.25%</b></td><td><b>31.67%</b></td><td>67.50%</td></tr>
+          <tr class="base"><td>FLUX.1 [dev]</td><td>68.33%</td><td>79.58%</td><td>88.33%</td><td>81.25%</td></tr>
+          <tr class="subhead"><td colspan="5">Flux.1[schnell]</td></tr>
+          <tr><td>UCE</td><td>23.33%</td><td>75.41%</td><td>61.67%</td><td>64.16%</td></tr>
+          <tr class="ours"><td>SHIFT</td><td><b>20.00%</b></td><td><b>81.25%</b></td><td><b>30.00%</b></td><td><b>75.25%</b></td></tr>
+          <tr class="base"><td>FLUX.1 [schnell]</td><td>80.00%</td><td>84.59%</td><td>88.33%</td><td>85.84%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-caption">Style-erasure accuracy on old and modern artist groups. Acc<sub>E</sub>: accuracy on erased-target prompts;
+      Acc<sub>U</sub>: accuracy on unaffected prompts.</p>
+
+    <figure class="paper">
+      <a href="static/images/style_erase.jpg"><img src="static/images/style_erase.jpg" width="2000" height="981" loading="lazy"
+        alt="Van Gogh style erasure on Flux.1[schnell] and Flux.1[dev]: sunflowers, wheat field with crows, windmill and sea, original vs UCE/ESD vs SHIFT."></a>
+      <figcaption>Van Gogh style erasure. First row: original Flux.1[dev] and Flux.1[schnell] generations. Second row: UCE and ESD
+        competitors. Last rows: our steered generations, where * denotes steering Flux.1[dev] with the vector derived from Flux.1[schnell].</figcaption>
+    </figure>
+    <figure class="paper">
+      <a href="static/images/style_other.jpg"><img src="static/images/style_other.jpg" width="2000" height="763" loading="lazy"
+        alt="Paintings in the styles of Picasso, Rembrandt, Warhol and Caravaggio, generated with and without Van Gogh steering, looking nearly identical."></a>
+      <figcaption>Other artists' styles (Picasso, Rembrandt, Warhol, Caravaggio) are preserved while Van Gogh's style is erased.</figcaption>
+    </figure>
+
+    <!-- ---------------- Add / switch ---------------- -->
+    <h3>Beyond erasure: adding and switching concepts</h3>
+    <p>
+      Applied with a positive sign, the same mechanism adds a concept or switches an attribute such as gender or age; no separate
+      vector is needed for addition and removal.
+    </p>
+    <div class="tabs" role="tablist" aria-label="Concept addition and switching examples">
+      <button class="tab" type="button" role="tab" aria-selected="true" aria-controls="panel-add-smile" id="tab-add-smile">Add smile</button>
+      <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="panel-switch-man" id="tab-switch-man">Woman &rarr; man</button>
+      <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="panel-switch-young" id="tab-switch-young">Old &rarr; young</button>
+    </div>
+    <div class="tab-panel" role="tabpanel" id="panel-add-smile" aria-labelledby="tab-add-smile">
+      <figure class="paper">
+        <a href="static/images/add_smile.jpg"><img src="static/images/add_smile.jpg" width="2000" height="741" loading="lazy"
+          alt="Top row: original generations with neutral expressions; bottom row: steered generations with smiles."></a>
+        <figcaption>Steering to add smile.</figcaption>
+      </figure>
+    </div>
+    <div class="tab-panel" role="tabpanel" id="panel-switch-man" aria-labelledby="tab-switch-man" hidden>
+      <figure class="paper">
+        <a href="static/images/switch_man.jpg"><img src="static/images/switch_man.jpg" width="2000" height="741" loading="lazy"
+          alt="Top row: original generations of women in various scenes; bottom row: the same scenes with a man instead."></a>
+        <figcaption>Steering to switch woman to man.</figcaption>
+      </figure>
+    </div>
+    <div class="tab-panel" role="tabpanel" id="panel-switch-young" aria-labelledby="tab-switch-young" hidden>
+      <figure class="paper">
+        <a href="static/images/switch_young.jpg"><img src="static/images/switch_young.jpg" width="2000" height="741" loading="lazy"
+          alt="Top row: original generations of old people; bottom row: the same scenes with young people."></a>
+        <figcaption>Steering to switch old to young.</figcaption>
+      </figure>
+    </div>
+
+    <!-- ---------------- SD3.5 ---------------- -->
+    <h3>Beyond FLUX: Stable Diffusion 3.5</h3>
+    <p>
+      SHIFT also applies to another MM-DiT backbone, SD3.5 (pooled text-encoder strength 5, DiT block strength 50, gate bound \(\delta = 0.3\)).
+    </p>
+    <div>
+      <div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr class="group"><th rowspan="2">Method</th><th colspan="4">Detected nudity</th><th colspan="2">MS-COCO 5K</th></tr>
+              <tr><th>Common</th><th>Female</th><th>Male</th><th>Total &darr;</th><th>FID &darr;</th><th>CLIP &uarr;</th></tr>
+            </thead>
+            <tbody>
+              <tr class="ours"><td>SHIFT</td><td><b>17</b></td><td><b>6</b></td><td><b>6</b></td><td><b>29</b></td><td>27.60</td><td>31.74</td></tr>
+              <tr class="base sep"><td>SD3.5</td><td>167</td><td>81</td><td>19</td><td>267</td><td>28.29</td><td>31.76</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="table-caption">SD3.5, nudity on I2P.</p>
+      </div>
+      <div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Method</th><th>Snoopy CS &darr;</th><th>Mickey CS</th><th>Spongebob CS</th><th>Pikachu CS</th><th>Dog CS</th><th>Legislator CS</th></tr>
+            </thead>
+            <tbody>
+              <tr class="ours"><td>SHIFT</td><td><b>18.80</b></td><td>26.66</td><td>28.79</td><td>27.59</td><td>24.57</td><td>22.51</td></tr>
+              <tr class="base sep"><td>SD3.5</td><td>29.19</td><td>26.76</td><td>28.78</td><td>27.56</td><td>24.62</td><td>22.50</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="table-caption">SD3.5, Snoopy erasure (CLIP scores; FID values are in the paper).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     ANALYSIS
+====================================================================== -->
+<section id="analysis" class="alt">
+  <div class="container">
+    <h2>Analysis</h2>
+    <p>
+      Here we look at the steering directions and the gate themselves rather than at the images they produce. Cosines are
+      taken between per-block mean-difference steering vectors.
+    </p>
+
+    <h3>Cross-distillation transfer</h3>
+    <p>
+      Why does a vector computed on the distilled Flux.1[schnell] steer Flux.1[dev] without recomputation? The nudity
+      directions estimated independently on the two models are closely aligned in every double-stream block: the mean
+      cosine is 0.709 and the minimum 0.537, against 0.251 for a different concept and 0.000 &plusmn; 0.018 for random
+      directions, so the concept occupies nearly the same direction in the text stream of both models. Blocks 0 and 18 are
+      outliers on both curves and carry a component that is not concept-specific.
+    </p>
+    <figure class="paper narrow">
+      <a href="static/images/fig_crossmodel.png"><img src="static/images/fig_crossmodel.png" width="2000" height="1296" loading="lazy"
+        alt="Line plot of per-block cosine between nudity directions from Flux.1[schnell] and Flux.1[dev]."></a>
+      <figcaption>Per-block cosine between the nudity direction computed on Flux.1[schnell] and on Flux.1[dev].</figcaption>
+    </figure>
+
+    <h3>Geometry of concepts</h3>
+    <p>
+      The six inappropriate I2P categories point in almost the same direction (pairwise cosine 0.81&ndash;0.96, mean 0.886),
+      while every pair between them and a concrete object is negative (&minus;0.30 to &minus;0.13); the two ranges do not
+      overlap. Summing near-collinear fields therefore moves the representation along essentially one shared axis instead
+      of several independent ones, which is why erasing all categories jointly leaves MS-COCO FID intact.
+    </p>
+    <figure class="paper narrow">
+      <a href="static/images/fig_concept_cos.png"><img src="static/images/fig_concept_cos.png" width="2000" height="1622" loading="lazy"
+        alt="Heatmap of pairwise cosine similarity between concept steering directions."></a>
+      <figcaption>Pairwise cosine between steering directions, averaged over the 19 blocks. Random baseline: 0.000 &plusmn; 0.004.</figcaption>
+    </figure>
+
+    <h3>Linear separability at the steering site</h3>
+    <p>
+      The classifier factor \(\eta_\text{cls}\) assumes that the presence of a concept can be read linearly from the
+      post-block text states. A linear SVM on token-mean activations, evaluated on held-out contrastive pairs, confirms it:
+      at the first denoising step the validation ROC-AUC averages 0.951 over all concepts and blocks, with a minimum of
+      0.771 at any single site, and Snoopy is perfectly separated in every block. Separability decreases at later steps,
+      which matches where steering is effective and supports building all steering quantities from the first step.
+    </p>
+    <figure class="paper">
+      <a href="static/images/fig_svm_val.png"><img src="static/images/fig_svm_val.png" width="2000" height="816" loading="lazy"
+        alt="Heatmaps of validation ROC-AUC of the linear classifier per block and denoising step for two concepts."></a>
+      <figcaption>Validation ROC-AUC of the linear classifier over all blocks and denoising steps for two representative concepts.</figcaption>
+    </figure>
+
+    <h3>How the gate behaves</h3>
+    <p>
+      The nominal strength \(\gamma\) is always multiplied by the gate, so it overstates what is actually applied. For a
+      named object the gate acts almost as a binary switch: it saturates on 100% of Snoopy prompts but on only 1.5% of
+      prompts with the five preserved objects. For an abstract concept it works mostly below saturation and opens far more
+      often on I2P than on MS-COCO (29&times;&ndash;86&times; more saturated prompts). At \(\gamma = 225\) the median effective
+      strength on I2P ranges from 0.69 to 10.90 across categories, while on MS-COCO it is zero for four of the seven and the
+      gate is fully closed on 43.9&ndash;77.0% of captions. A single \(\gamma\) therefore transfers across concepts: the gate,
+      not the operator, adapts the strength to each prompt.
+    </p>
+    <figure class="paper">
+      <a href="static/images/gate_behave.png"><img src="static/images/gate_behave.png" width="1372" height="461" loading="lazy"
+        alt="Three bar charts describing gate saturation and effective steering strength on I2P, MS-COCO and the concrete-object protocol."></a>
+      <figcaption>Gate behaviour on Flux.1[schnell]: (a) fraction of prompts at which the gate saturates on I2P vs. MS-COCO 5K;
+        (b) effective strength \(\alpha_\text{eff}\) per concept, with the share of fully closed gates inside each bar;
+        (c) the same for the concrete-object protocol.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================================================================
+     BIBTEX
+====================================================================== -->
+<section id="bibtex" class="alt">
+  <div class="container">
+    <h2>BibTeX</h2>
+    <div class="bibtex">
+      <button class="copy-btn" id="copy-bibtex" type="button">Copy</button>
+<pre id="bibtex-text">@inproceedings{konovalova2027shift,
+  title     = {SHIFT: Steering Hidden Intermediates in Flow Transformers},
+  author    = {Konovalova, Nina and Idrisov, Ibragim and Alanov, Aibek},
+  booktitle = {Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)},
+  year      = {2027}
+}</pre>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <p><a href="https://github.com/ControlGenAI/SHIFT"><i class="fa-brands fa-github" aria-hidden="true"></i> ControlGenAI/SHIFT</a></p>
+    <p>Page layout inspired by the <a href="https://nerfies.github.io">Nerfies</a> project page.</p>
+  </div>
+</footer>
+
+<script>
+  // Tabs: each .tabs group controls the panels named in aria-controls.
+  document.querySelectorAll(".tabs").forEach(function (group) {
+    var tabs = group.querySelectorAll(".tab");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        tabs.forEach(function (t) {
+          var selected = t === tab;
+          t.setAttribute("aria-selected", selected ? "true" : "false");
+          document.getElementById(t.getAttribute("aria-controls")).hidden = !selected;
+        });
+      });
+    });
+  });
+
+  // Theme toggle: flips between light and dark and remembers the choice.
+  document.getElementById("theme-toggle").addEventListener("click", function () {
+    var root = document.documentElement;
+    var current = root.getAttribute("data-theme");
+    if (!current) {
+      current = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    var next = current === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("shift-theme", next); } catch (e) {}
+  });
+
+  // BibTeX copy button.
+  document.getElementById("copy-bibtex").addEventListener("click", function () {
+    var btn = this;
+    var text = document.getElementById("bibtex-text").textContent;
+    function done(ok) {
+      btn.textContent = ok ? "Copied" : "Select & copy";
+      setTimeout(function () { btn.textContent = "Copy"; }, 1600);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+    } else {
+      done(false);
+    }
+  });
+</script>
+
+</body>
+</html>

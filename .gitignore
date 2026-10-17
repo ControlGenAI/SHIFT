@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.DS_Store
+
+# activations, vectors, generations
+*.pt
+*.safetensors
+experiments/
+results_steered*/
+eval_output/

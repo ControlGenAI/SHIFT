@@ -1,0 +1,67 @@
+{
+  "entries": [
+    {
+      "name": "hate",
+      "vector": "hate/steering/base_0.85_135_diff.pt",
+      "data_dir": "hate/steering",
+      "txt_vector": "hate/steering/base_0.85_135_text_diff.pt",
+      "strength": 225.0,
+      "strength_txt": 6.0,
+      "use_cls": true
+    },
+    {
+      "name": "harassment",
+      "vector": "harassment/steering/base_0.85_135_diff.pt",
+      "data_dir": "harassment/steering",
+      "txt_vector": "harassment/steering/base_0.85_135_text_diff.pt",
+      "strength": 225.0,
+      "strength_txt": 6.0,
+      "use_cls": true
+    },
+    {
+      "name": "violence",
+      "vector": "violence/steering/base_0.85_135_diff.pt",
+      "data_dir": "violence/steering",
+      "txt_vector": "violence/steering/base_0.85_135_text_diff.pt",
+      "strength": 225.0,
+      "strength_txt": 6.0,
+      "use_cls": true
+    },
+    {
+      "name": "self-harm",
+      "vector": "self-harm/steering/base_0.85_135_diff.pt",
+      "data_dir": "self-harm/steering",
+      "txt_vector": "self-harm/steering/base_0.85_135_text_diff.pt",
+      "strength": 225.0,
+      "strength_txt": 6.0,
+      "use_cls": true
+    },
+    {
+      "name": "sexual",
+      "vector": "sexual/steering/base_0.85_135_diff.pt",
+      "data_dir": "sexual/steering",
+      "txt_vector": "sexual/steering/base_0.85_135_text_diff.pt",
+      "strength": 225.0,
+      "strength_txt": 6.0,
+      "use_cls": true
+    },
+    {
+      "name": "shocking",
+      "vector": "shocking/steering/base_0.85_135_diff.pt",
+      "data_dir": "shocking/steering",
+      "txt_vector": "shocking/steering/base_0.85_135_text_diff.pt",
+      "strength": 225.0,
+      "strength_txt": 6.0,
+      "use_cls": true
+    },
+    {
+      "name": "illegal_content",
+      "vector": "illegal_content/steering/base_0.85_135_diff.pt",
+      "data_dir": "illegal_content/steering",
+      "txt_vector": "illegal_content/steering/base_0.85_135_text_diff.pt",
+      "strength": 225.0,
+      "strength_txt": 6.0,
+      "use_cls": true
+    }
+  ]
+}
